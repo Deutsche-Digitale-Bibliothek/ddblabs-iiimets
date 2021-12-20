@@ -1,0 +1,199 @@
+<mets:mets OBJID="bsb10485202_00127_u001" TYPE="newspaper" xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-7.xsd http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd">
+    <mets:metsHdr LASTMODDATE="2021-12-20T13:49:05Z">
+        <mets:agent xmlns:dv="http://dfg-viewer.de/" ROLE="CREATOR" TYPE="ORGANIZATION">
+            <mets:name>Bayerische Staatsbibliothek</mets:name>
+        </mets:agent>
+    </mets:metsHdr>
+    <mets:dmdSec ID="dmd">
+        <mets:mdWrap MDTYPE="MODS">
+            <mets:xmlData>
+                <mods:mods>
+                    <mods:typeOfResource>text</mods:typeOfResource>
+                    <mods:part order="18640323">
+                        <mods:detail type="volume">
+                            <mods:number></mods:number>
+                        </mods:detail>
+                        <mods:detail type="issue">
+                            <mods:number>, 23.03.1864</mods:number>
+                            <mods:title></mods:title>
+                        </mods:detail>
+                    </mods:part>
+                    <mods:originInfo eventType="publication">
+                        <mods:dateIssued encoding="iso8601">1864-03-23</mods:dateIssued>
+                        <mods:publisher></mods:publisher>
+                        <mods:place>
+                            <mods:placeTerm></mods:placeTerm>
+                        </mods:place>
+                    </mods:originInfo>
+                    <mods:originInfo eventType="digitization">
+                        <mods:dateCaptured encoding="iso8601"></mods:dateCaptured>
+                        <mods:publisher>Bayerische Staatsbibliothek</mods:publisher>
+                    </mods:originInfo>
+                    <mods:language>
+                        <mods:languageTerm type="code" valueURI="http://id.loc.gov/vocabulary/iso639-2/ger">ger</mods:languageTerm>
+                    </mods:language>
+                    <mods:physicalDescription>
+                        <mods:extent>6 Seiten</mods:extent>
+                    </mods:physicalDescription>
+                    <mods:relatedItem type="host">
+                        <mods:recordInfo>
+                            <mods:recordIdentifier source="zdb-ppn">https://mdz-nbn-resolving.de/view:bsb10485202_00127_u001</mods:recordIdentifier>
+                        </mods:recordInfo>
+                        <mods:identifier type="zdb">1252612-5</mods:identifier>
+                        <mods:relatedItem type="original">
+                            <mods:identifier type="zdb"></mods:identifier>
+                        </mods:relatedItem>
+                        <mods:titleInfo>
+                            <mods:title>Münchener Abendzeitung. 1864, 3 - 12 ## 23.03.1864</mods:title>
+                        </mods:titleInfo>
+                    </mods:relatedItem>
+                    <mods:identifier type="purl">https://mdz-nbn-resolving.de/view:bsb10485202_00127_u001</mods:identifier>
+                    <mods:accessCondition type="use and reproduction" xlink:href="https://creativecommons.org/publicdomain/mark/1.0/">Public Domain Mark 1.0</mods:accessCondition>
+                    <mods:recordInfo>
+                        <mods:recordIdentifier source="">bsb10485202_00127_u001</mods:recordIdentifier>
+                        <mods:recordContentSource valueURI="http://ld.zdb-services.de/resource/organisations/DE-Bo133">DE-Bo133</mods:recordContentSource>
+                        <mods:recordChangeDate encoding="iso8601">1864-03-23</mods:recordChangeDate>
+                        <mods:recordInfoNote type="license">http://rightsstatements.org/vocab/NoC-NC/1.0/</mods:recordInfoNote>
+                    </mods:recordInfo>
+                    <mods:genre valueURI="http://ddb.vocnet.org/hierarchietyp/ht014" displayLabel="document type">issue</mods:genre>
+                    <mods:typeOfResource valueURI="http://ddb.vocnet.org/medientyp/mt003">text</mods:typeOfResource>
+                    <mods:location>
+                        <mods:physicalLocation>München, Bayerische Staatsbibliothek -- 2 Eph.pol. 0 b-1864,3-12</mods:physicalLocation>
+                        <mods:shelfLocator>München, Bayerische Staatsbibliothek -- 2 Eph.pol. 0 b-1864,3-12</mods:shelfLocator>
+                    </mods:location>
+                </mods:mods>
+            </mets:xmlData>
+        </mets:mdWrap>
+    </mets:dmdSec>
+    <mets:amdSec xmlns="http://www.w3.org/TR/xhtml1/strict" xmlns:dv="http://dfg-viewer.de/" xmlns:xs="http://www.w3.org/2001/XMLSchema" ID="amd">
+        <mets:rightsMD ID="rights">
+            <mets:mdWrap MIMETYPE="text/xml" MDTYPE="OTHER" OTHERMDTYPE="DVRIGHTS">
+                <mets:xmlData>
+                    <dv:rights>
+                        <dv:owner>Bayerische Staatsbibliothek</dv:owner>
+                        <dv:ownerLogo></dv:ownerLogo>
+                        <dv:ownerSiteURL></dv:ownerSiteURL>
+                        <dv:license>http://rightsstatements.org/vocab/NoC-NC/1.0/</dv:license>
+                    </dv:rights>
+                </mets:xmlData>
+            </mets:mdWrap>
+        </mets:rightsMD>
+        <mets:digiprovMD ID="DIGIPROV">
+            <mets:mdWrap MIMETYPE="text/xml" MDTYPE="OTHER" OTHERMDTYPE="DVLINKS">
+                <mets:xmlData>
+                    <dv:links>
+                        <dv:presentation>https://mdz-nbn-resolving.de/view:bsb10485202_00127_u001</dv:presentation>
+                    </dv:links>
+                </mets:xmlData>
+            </mets:mdWrap>
+        </mets:digiprovMD>
+    </mets:amdSec>
+    <mets:fileSec xmlns:dv="http://dfg-viewer.de/">
+        <mets:fileGrp xmlns="http://www.w3.org/TR/xhtml1/strict" xmlns:xs="http://www.w3.org/2001/XMLSchema" USE="DEFAULT">
+            <mets:file MIMETYPE="image/jpg" ID="default_1">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00127/full/full/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="default_2">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00128/full/full/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="default_3">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00129/full/full/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="default_4">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00130/full/full/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="default_5">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00131/full/full/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="default_6">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00132/full/full/0/default.jpg" />
+            </mets:file>
+        </mets:fileGrp>
+        <mets:fileGrp USE="FULLTEXT">
+            <mets:file MIMETYPE="text/xml" ID="ocr_1" SEQ="1">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/ocr/bsb10485202/127" />
+            </mets:file>
+            <mets:file MIMETYPE="text/xml" ID="ocr_2" SEQ="2">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/ocr/bsb10485202/128" />
+            </mets:file>
+            <mets:file MIMETYPE="text/xml" ID="ocr_3" SEQ="3">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/ocr/bsb10485202/129" />
+            </mets:file>
+            <mets:file MIMETYPE="text/xml" ID="ocr_4" SEQ="4">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/ocr/bsb10485202/130" />
+            </mets:file>
+            <mets:file MIMETYPE="text/xml" ID="ocr_5" SEQ="5">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/ocr/bsb10485202/131" />
+            </mets:file>
+            <mets:file MIMETYPE="text/xml" ID="ocr_6" SEQ="6">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/ocr/bsb10485202/132" />
+            </mets:file>
+        </mets:fileGrp>
+        <mets:fileGrp USE="THUMBS">
+            <mets:file MIMETYPE="image/jpg" ID="thumb_1" SEQ="1">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00127/full/250,/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="thumb_2" SEQ="2">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00128/full/250,/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="thumb_3" SEQ="3">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00129/full/250,/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="thumb_4" SEQ="4">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00130/full/250,/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="thumb_5" SEQ="5">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00131/full/250,/0/default.jpg" />
+            </mets:file>
+            <mets:file MIMETYPE="image/jpg" ID="thumb_6" SEQ="6">
+                <mets:FLocat LOCTYPE="URL" xlink:href="https://api.digitale-sammlungen.de/iiif/image/v2/bsb10485202_00132/full/250,/0/default.jpg" />
+            </mets:file>
+        </mets:fileGrp>
+    </mets:fileSec>
+    <mets:structMap xmlns="http://www.w3.org/TR/xhtml1/strict" xmlns:dv="http://dfg-viewer.de/" ID="psmp" TYPE="PHYSICAL">
+        <mets:div ID="phys" CONTENTIDS="NULL" TYPE="physSequence">
+            <mets:div xmlns:xs="http://www.w3.org/2001/XMLSchema" TYPE="page" ID="phys_1" CONTENTIDS="NULL" ORDER="1" ORDERLABEL="1">
+                <mets:fptr FILEID="default_1" />
+                <mets:fptr FILEID="ocr_1" />
+                <mets:fptr FILEID="thumb_1" />
+            </mets:div>
+            <mets:div xmlns:xs="http://www.w3.org/2001/XMLSchema" TYPE="page" ID="phys_2" CONTENTIDS="NULL" ORDER="2" ORDERLABEL="2">
+                <mets:fptr FILEID="default_2" />
+                <mets:fptr FILEID="ocr_2" />
+                <mets:fptr FILEID="thumb_2" />
+            </mets:div>
+            <mets:div xmlns:xs="http://www.w3.org/2001/XMLSchema" TYPE="page" ID="phys_3" CONTENTIDS="NULL" ORDER="3" ORDERLABEL="3">
+                <mets:fptr FILEID="default_3" />
+                <mets:fptr FILEID="ocr_3" />
+                <mets:fptr FILEID="thumb_3" />
+            </mets:div>
+            <mets:div xmlns:xs="http://www.w3.org/2001/XMLSchema" TYPE="page" ID="phys_4" CONTENTIDS="NULL" ORDER="4" ORDERLABEL="4">
+                <mets:fptr FILEID="default_4" />
+                <mets:fptr FILEID="ocr_4" />
+                <mets:fptr FILEID="thumb_4" />
+            </mets:div>
+            <mets:div xmlns:xs="http://www.w3.org/2001/XMLSchema" TYPE="page" ID="phys_5" CONTENTIDS="NULL" ORDER="5" ORDERLABEL="5">
+                <mets:fptr FILEID="default_5" />
+                <mets:fptr FILEID="ocr_5" />
+                <mets:fptr FILEID="thumb_5" />
+            </mets:div>
+            <mets:div xmlns:xs="http://www.w3.org/2001/XMLSchema" TYPE="page" ID="phys_6" CONTENTIDS="NULL" ORDER="6" ORDERLABEL="6">
+                <mets:fptr FILEID="default_6" />
+                <mets:fptr FILEID="ocr_6" />
+                <mets:fptr FILEID="thumb_6" />
+            </mets:div>
+        </mets:div>
+    </mets:structMap>
+    <mets:structMap TYPE="LOGICAL">
+        <mets:div TYPE="issue" ID="log" DMDID="dmd" ADMID="amd" ORDER="1" ORDERLABEL="1864-03-23" LABEL=", 23.03.1864"></mets:div>
+    </mets:structMap>
+    <mets:structLink xmlns="http://www.w3.org/TR/xhtml1/strict" xmlns:dv="http://dfg-viewer.de/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+        <mets:smLink xlink:from="log" xlink:to="phys_1" />
+        <mets:smLink xlink:from="log" xlink:to="phys_2" />
+        <mets:smLink xlink:from="log" xlink:to="phys_3" />
+        <mets:smLink xlink:from="log" xlink:to="phys_4" />
+        <mets:smLink xlink:from="log" xlink:to="phys_5" />
+        <mets:smLink xlink:from="log" xlink:to="phys_6" />
+
+    </mets:structLink>
+</mets:mets>
