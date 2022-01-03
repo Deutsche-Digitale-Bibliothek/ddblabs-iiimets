@@ -11,27 +11,14 @@ from datetime import datetime
 from loguru import logger
 from lxml import etree
 from progress.bar import ChargingBar
-from progress.bar import ChargingBar
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-import click
-import click
-import csv
 import json
 import lxml.etree as etree
 import os
-import os
-import pprint
-import pretty_errors
-import re
 import re
 import requests
-import shutil
-import sys
-import sys
 import time
-import yaml
-import zipfile
 
 def generateMETS(metadata):
 
@@ -235,7 +222,7 @@ def generateMETS(metadata):
     Output auf Validität prüfen und speichern
     '''
     xmltemplate = re.sub('&', '&amp;', xmltemplate)
-    folder = '/Users/karl/Coding/baytsify/'
+    folder = '/Users/karl/Coding/baytsify/METS'
     try:
         newtree = etree.fromstring(xmltemplate)
     except etree.XMLSyntaxError as e:
@@ -273,11 +260,13 @@ def setup_requests() -> requests.Session:
     http.mount("http://", adapter)
     return http
 
-def getNewspaperData(id, session):
+def getNewspaperData(id, session, newspaper, issues):
+
     for np in newspaper:
         if id in np['id']:
             zdbid = np['metadata']['zdbid']
             sprache = np['metadata']['sprache']
+
     else:
         metadata = {}
         newspaper_manifest_url = f'https://api.digitale-sammlungen.de/iiif/presentation/v2/{id}/manifest'
@@ -295,8 +284,7 @@ def getNewspaperData(id, session):
         # pprint.pprint(metadata)
     return zdbid, sprache, standort
 
-
-def parseMetadata(manifesturl, session):
+def parseMetadata(manifesturl, session, newspaper, issues):
     # Daten laden
     jsondata = json.loads(session.get(manifesturl).text)
     jsonmetadata = jsondata['metadata']
@@ -304,7 +292,7 @@ def parseMetadata(manifesturl, session):
     # Dict aufmachen
     metadata = {}
     # Erweiterte Infos über das Manifest der Zeitung auslesen
-    zdbid, sprache, standort = getNewspaperData(newspaperid, session)
+    zdbid, sprache, standort = getNewspaperData(newspaperid, session, newspaper, issues)
     # Dictionary befüllen
     metadata['zdbid'] = zdbid
     metadata['sprache'] = sprache
@@ -332,23 +320,9 @@ def parseMetadata(manifesturl, session):
     generateMETS(metadata)
     issues.append(metadata)
 
-
-
-# def main(dir):
-
-
-#     # logger.remove()
-#     # logger.add(f'transform_FES_data_{time.strftime("%Y%m%d_%H%M")}.log', format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",)
-#     basedir = os.path.abspath(dir)
-#     with ChargingBar('Entpacke ZIP Dateien', max=len([f for f in os.listdir(basedir) if f.endswith("zip")])) as bar:
-#         for z in os.listdir(basedir):
-#             if z.endswith(".zip"):
-#                 zipfile.ZipFile(os.path.join(basedir, z), mode='r').extractall(path=os.path.join(basedir, z.replace('.zip', '')))
-#                 bar.next()
-
-
-
-
+def convertManifestsToMETS(manifesturls):
+    for u in manifesturls:
+        parseMetadata(u, http)
 # -------------------------------------------------------------------------------------
 if __name__ == '__main__':
     newspaper = []
@@ -372,6 +346,6 @@ if __name__ == '__main__':
     ]
     '''
     http = setup_requests()
-    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10485202_00127_u001/manifest']
+    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10485202_00127_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11308295_00001_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10530945_00260_u001/manifest']
     for u in manifesturls:
         parseMetadata(u, http)
