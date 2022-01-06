@@ -6,16 +6,11 @@
 # @Link   :
 # @Date   : 17.12.2021, 13:01:27
 from datetime import datetime
-from requests.adapters import HTTPAdapter
-from requests.sessions import default_headers
-from urllib3.util.retry import Retry
 import pandas as pd
-import requests
 import sys
 import pickle
-import urllib3
 import time
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
 
 '''
 - Get first (https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial)
