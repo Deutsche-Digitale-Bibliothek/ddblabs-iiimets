@@ -4,3 +4,5 @@ __pycache__/*
 .vscode/*
 *.log
 newspaper.txt
+ids_of_generated_mets.txt
+iiif_conversion.py
