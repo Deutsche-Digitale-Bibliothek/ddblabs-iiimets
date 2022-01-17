@@ -94,7 +94,7 @@ def generateMETS(metadata, logger, cwd):
     isodate = re.sub(r'(\d{4}-\d{2}-\d{2})(.+)', r'\1', metadata['dateIssued'])
     physlocation = re.sub(r'(.+)\s--\s(.+)', r'\1', metadata['standort'])
     shelfloc = re.sub(r'(.+)\s--\s(.+)', r'\2', metadata['standort'])
-    language_dict = {'Deutsch': 'ger', 'Italienisch': 'ita', 'Französisch': 'fre', 'Latein': 'lat', 'Englisch': 'eng'}
+    language_dict = {'Deutsch': 'ger', 'Italienisch': 'ita', 'Französisch': 'fre', 'Latein': 'lat', 'Englisch': 'eng', 'Spanisch': 'es'}
     sprache = language_dict[metadata['sprache']]
 
     xmltemplate = f'''
@@ -154,7 +154,7 @@ def generateMETS(metadata, logger, cwd):
     <mods:identifier type="zdb">{metadata['zdbid_print']}</mods:identifier>
     </mods:relatedItem>
     <mods:titleInfo>
-    <mods:title>{metadata['Titel']}</mods:title>
+    <mods:title>{metadata['newspapertitel']}</mods:title>
     </mods:titleInfo>
     </mods:relatedItem>
     <mods:identifier type="purl">{metadata['purl']}</mods:identifier>
@@ -278,30 +278,31 @@ def setup_requests() -> requests.Session:
 
 
 def getNewspaperData(id, session, newspaper):
-
+    '''
+    bekommt die id des newspapers und die Liste mit den zuvor ggf. schon gesammelten Infos zu den Zeitungen
+    '''
     def get_data_from_zdbsru(zdbid):
         baseurl = 'http://services.dnb.de/sru/zdb?version=1.1&operation=searchRetrieve&query=zdbid%3D' + \
             zdbid + '&recordSchema=MARC21-xml'
+        # print(zdbid)
         response = requests.get(baseurl)
         root = etree.XML(response.content)
         namespaces = {"marc": "http://www.loc.gov/MARC21/slim"}
-        zdbid_print = root.findall(f".//marc:datafield[@tag='776']/marc:subfield[@code='w']", namespaces)
-        # TODO hier noch den Titel der Zeitung auslesen!
-        if not zdbid_print:
-            return ""
+        zdbid_digital = root.findall(f".//marc:datafield[@tag='776']/marc:subfield[@code='w']", namespaces)
+        newspapertitel = root.findall(f".//marc:datafield[@tag='245']/marc:subfield[@code='a']", namespaces)
+
+        if not zdbid_digital:
+            zdbid_digital = ""
         else:
-            return re.sub(r'\(.+\)', '', zdbid_print[0].text)
+            zdbid_digital = re.sub(r'\(.+\)', '', zdbid_digital[0].text)
+        if not newspapertitel:
+            newspapertitel = ""
+        else:
+            newspapertitel = newspapertitel[0].text
+        # ! TODO newspaper Titelk noch die nicht sortierzeichen entfernen
+        return zdbid_digital, newspapertitel
 
-    for np in newspaper:
-
-        if id in np['id']:
-            zdbid_print = np['metadata']['zdbid_print']
-            sprache = np['metadata']['sprache']
-            standort = np['metadata']['standort']
-            zdbid_digital = np['metadata']['zdbid_digital']
-            publisher = np['metadata']['publisher']
-
-    else:
+    def gatherinfos():
         metadata = {}
         newspaper_manifest_url = f'https://api.digitale-sammlungen.de/iiif/presentation/v2/{id}/manifest'
         jsonmetadata = json.loads(session.get(newspaper_manifest_url).text)
@@ -312,13 +313,11 @@ def getNewspaperData(id, session, newspaper):
                 metadata[e['label'][0]['@value']] = e['value'][0]['@value']
             else:
                 metadata[e['label'][0]['@value']] = e['value']
-        zdbid_print = re.sub('ZDB ','',metadata['Identifikator'])
-        zdbid_digital = get_data_from_zdbsru(zdbid_print)
+        zdbid_print = re.sub('ZDB ','', metadata['Identifikator'])
+        zdbid_digital, newspapertitel = get_data_from_zdbsru(zdbid_print)
         sprache = metadata['Sprache']
         standort = metadata['Standort']
-        # ! Error: Das hat zuviele Angaben drin (Concordia: Passauer Wochenblatt. 1845 = Jg. 2):
-        print(metadata['Titel'])
-        # ! muss über die ZDB angerufen werden der Titel.
+        metadata['Newspapertitle'] = newspapertitel
         try:
             publisher = metadata['Von']
         except:
@@ -334,14 +333,36 @@ def getNewspaperData(id, session, newspaper):
         npdict['metadata']['zdbid_digital'] = zdbid_digital
         npdict['metadata']['publisher'] = publisher
         npdict['metadata']['urn'] = urn
-
+        npdict['metadata']['newspapertitel'] = newspapertitel
         newspaper.append(npdict)
+        return zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel
 
-    return zdbid_print, sprache, standort, publisher, urn, zdbid_digital
+    if len(newspaper) == 0:
+        # das passiert nur bei der allerersten Issue
+        print("First Issue!")
+        zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel = gatherinfos()
+    else:
+        # schauen, ob wir zu der Zeitung die Metadaten schon abgerufen haben
+        for np in newspaper:
+            if id in np['id']:
+                logger.info("Cache!")
+                zdbid_digital = np['metadata']['zdbid_digital']
+                sprache = np['metadata']['sprache']
+                standort = np['metadata']['standort']
+                zdbid_print = np['metadata']['zdbid_print']
+                publisher = np['metadata']['publisher']
+                newspapertitel = np['metadata']['newspapertitel']
+                urn = np['metadata']['urn']
+        else:
+            logger.info("Rufe die Infos ab über das Manifest der Zeitung und die ZDB")
+            zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel = gatherinfos()
+
+
+    return zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel
 
 def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd):
     # Daten laden
-    logger.debug(manifesturl)
+    # logger.debug(manifesturl)
     jsondata = json.loads(session.get(manifesturl).text)
     jsonmetadata = jsondata['metadata']
     #  get MDZ Newspaper ID
@@ -377,13 +398,14 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
             logger.warning(f'{manifesturl} wahrscheinlich keine Zeitung!')
             return
         # Erweiterte Infos über das Manifest der Zeitung auslesen
-        zdbid_print, sprache, standort, publisher, urn, zdbid_digital = getNewspaperData(newspaperid, session, newspaper)
+        zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel = getNewspaperData(newspaperid, session, newspaper)
         # Dictionary befüllen
         metadata['zdbid_print'] = zdbid_print
         metadata['sprache'] = sprache
         metadata['standort'] = standort
         metadata['publisher'] = publisher
         metadata['urn'] = urn
+        metadata['newspapertitel'] = newspapertitel
         metadata['zdbid_digital'] = zdbid_digital
         # -----------------
         metadata['dateIssued'] = jsondata['navDate']
@@ -399,7 +421,7 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
                     try:
                         c['seeAlso']
                     except KeyError:
-                        print('kein OCR')
+                        logger.warning(f'Kein OCR bei {manifesturl}')
                     else:
                         ocr.append(c['seeAlso']['@id'])
         metadata['images'] = images
@@ -419,6 +441,6 @@ if __name__ == '__main__':
     http = setup_requests()
     logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="INFO")
     alreadygeneratedids = ""
-    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb00133458_00261_u001/manifest']
+    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00003_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00037_u001/manifest']
     for u in manifesturls:
         parseMetadata(u, http, newspaper, issues, alreadygeneratedids, logger, Path.cwd())
