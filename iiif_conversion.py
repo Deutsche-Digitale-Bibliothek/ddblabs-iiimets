@@ -90,11 +90,11 @@ def generateMETS(metadata, logger, cwd):
         ausgabe_titel = re.sub(r, r'\1', metadata['Titel']) + ', ' + ausgabe
     else:
         ausgabe = None
-        ausgabe_titel = None
+        ausgabe_titel = metadata['Titel']
     isodate = re.sub(r'(\d{4}-\d{2}-\d{2})(.+)', r'\1', metadata['dateIssued'])
     physlocation = re.sub(r'(.+)\s--\s(.+)', r'\1', metadata['standort'])
     shelfloc = re.sub(r'(.+)\s--\s(.+)', r'\2', metadata['standort'])
-    language_dict = {'Deutsch': 'ger', 'Italienisch': 'ita'}
+    language_dict = {'Deutsch': 'ger', 'Italienisch': 'ita', 'Französisch': 'fre', 'Latein': 'lat', 'Englisch': 'eng'}
     sprache = language_dict[metadata['sprache']]
 
     xmltemplate = f'''
@@ -286,6 +286,7 @@ def getNewspaperData(id, session, newspaper):
         root = etree.XML(response.content)
         namespaces = {"marc": "http://www.loc.gov/MARC21/slim"}
         zdbid_print = root.findall(f".//marc:datafield[@tag='776']/marc:subfield[@code='w']", namespaces)
+        # TODO hier noch den Titel der Zeitung auslesen!
         if not zdbid_print:
             return ""
         else:
@@ -315,6 +316,9 @@ def getNewspaperData(id, session, newspaper):
         zdbid_digital = get_data_from_zdbsru(zdbid_print)
         sprache = metadata['Sprache']
         standort = metadata['Standort']
+        # ! Error: Das hat zuviele Angaben drin (Concordia: Passauer Wochenblatt. 1845 = Jg. 2):
+        print(metadata['Titel'])
+        # ! muss über die ZDB angerufen werden der Titel.
         try:
             publisher = metadata['Von']
         except:
@@ -337,9 +341,25 @@ def getNewspaperData(id, session, newspaper):
 
 def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd):
     # Daten laden
+    logger.debug(manifesturl)
     jsondata = json.loads(session.get(manifesturl).text)
     jsonmetadata = jsondata['metadata']
-    newspaperid = re.sub(r'(https://digitale-sammlungen\.de/details/)(.+)', r'\2', jsondata['seeAlso'][1]['@id'])
+    #  get MDZ Newspaper ID
+    if isinstance(jsondata['seeAlso'], list):
+        for i in jsondata['seeAlso']:
+            if i['@id'].startswith('https://digitale-sammlungen.de'):
+                newspaperid = re.sub(r'(https://digitale-sammlungen\.de/details/)(.+)', r'\2', i['@id'])
+    else:
+        try:
+            jsondata['seeAlso']['@id']
+        except KeyError:
+            logger.error('Problem beim parsen der Newspaper ID')
+        else:
+            if jsondata['seeAlso']['@id'].startswith('https://digitale-sammlungen.de'):
+                newspaperid = re.sub(r'(https://digitale-sammlungen\.de/details/)(.+)', r'\2', jsondata['seeAlso']['@id'])
+            else:
+                logger.error('Problem beim parsen der Newspaper ID')
+                return
     # Dict aufmachen
     metadata = {}
     for e in jsonmetadata:
@@ -353,6 +373,9 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
         logger.info(f"Skip conversion of previously generated METS file for {metadata['id']}")
         pass
     else:
+        if not re.search(r'\s##\s', metadata['Titel']):
+            logger.warning(f'{manifesturl} wahrscheinlich keine Zeitung!')
+            return
         # Erweiterte Infos über das Manifest der Zeitung auslesen
         zdbid_print, sprache, standort, publisher, urn, zdbid_digital = getNewspaperData(newspaperid, session, newspaper)
         # Dictionary befüllen
@@ -373,7 +396,12 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
                 images.append(c['images'][0]['resource']['@id'])
             for s in jsondata['sequences']:
                 for c in s['canvases']:
-                    ocr.append(c['seeAlso']['@id'])
+                    try:
+                        c['seeAlso']
+                    except KeyError:
+                        print('kein OCR')
+                    else:
+                        ocr.append(c['seeAlso']['@id'])
         metadata['images'] = images
         metadata['ocr'] = ocr
         # fertiges Dict an die Liste der Issues appenden
@@ -391,6 +419,6 @@ if __name__ == '__main__':
     http = setup_requests()
     logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="INFO")
     alreadygeneratedids = ""
-    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11380429_01239_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10485202_00127_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10485202_00799_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11308295_00001_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10530945_00260_u001/manifest']
+    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb00133458_00261_u001/manifest']
     for u in manifesturls:
         parseMetadata(u, http, newspaper, issues, alreadygeneratedids, logger, Path.cwd())

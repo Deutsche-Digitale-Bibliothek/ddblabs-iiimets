@@ -80,3 +80,12 @@ def getNewspaperManifests(url, session):
     with open('newspaper_urls.pkl', 'wb') as f:
         pickle.dump(newspaper_urls, f)
     return newspaper_urls
+
+def generateNewspaperURLfromFile(fpath):
+    import random
+    newspaper_urls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/' + line.rstrip('\n') + '/manifest' for line in open(fpath)]
+    with open('newspaper_urls.pkl', 'wb') as f:
+        pickle.dump(random.sample(newspaper_urls, int(len(newspaper_urls)/1000)), f)
+
+if __name__ == '__main__':
+    generateNewspaperURLfromFile('periodikaausgaben_bsb_20211220.txt')
