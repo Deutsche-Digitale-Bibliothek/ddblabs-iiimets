@@ -68,7 +68,7 @@ def start(newspaper_urls, cwd, http, folder):
     if Path(cwd, 'newspaperdata.pkl').exists():
         with open(Path(cwd, 'newspaperdata.pkl'), 'rb') as f:
             newspaper = pickle.load(f)
-            logger.info("Loaded newspaperdata from pickled file")
+            logger.info(f"Loaded {len(newspaper)} newspaperdata from pickled file")
     else:
         newspaper = []
 
@@ -76,8 +76,8 @@ def start(newspaper_urls, cwd, http, folder):
     # Wenn wir das als Update laufen lassen dann wollen wir ja ggf. nicht alle METS Dateien neu erzeugen lassen
     # sondern nur die zu den IDs die wir noch nicht haben
     if Path(cwd, 'ids_of_generated_mets.txt').exists():
-        # alreadygeneratedids = [line.rstrip('\n') for line in open(Path(cwd, 'ids_of_generated_mets.txt'))]
-        alreadygeneratedids = []
+        alreadygeneratedids = [line.rstrip('\n') for line in open(Path(cwd, 'ids_of_generated_mets.txt'))]
+        # alreadygeneratedids = []
     else:
         alreadygeneratedids = []
 

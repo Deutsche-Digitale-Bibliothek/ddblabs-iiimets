@@ -116,6 +116,7 @@ def generateMETS(metadata, logger, cwd, folder):
 'Altäthiopisch':'gez',
 'Altenglisch':'ang',
 'Altfranzösisch':'fro',
+'Altgriechisch':'grc',
 'Althochdeutsch':'goh',
 'Altirisch':'sga',
 'Altnorwegisch':'non',
@@ -793,7 +794,10 @@ def getNewspaperData(id, session, newspaper):
                 metadata[e['label'][0]['@value']] = e['value']
         zdbid_print = re.sub('ZDB ','', metadata['Identifikator'])
         zdbid_digital, newspapertitel = get_data_from_zdbsru(zdbid_print)
-        sprache = metadata['Sprache']
+        try:
+            sprache = metadata['Sprache']
+        except:
+            sprache = 'Nicht zu entscheiden'
         standort = metadata['Standort']
         metadata['Newspapertitle'] = newspapertitel
         try:
