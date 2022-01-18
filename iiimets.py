@@ -2,52 +2,76 @@ from iiif_harvesting import getNewspaperManifests
 from iiif_conversion import convertManifestsToMETS, parseMetadata, setup_requests
 from pathlib import Path
 import pickle
-from piou import Cli, Option
+import requests
 from progress.bar import ChargingBar
 import urllib3
 import re
 import time
+from timeit import default_timer
 import sys
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-# cli = Cli(description='A CLI tool')
+def loadManifestURLsFromPickle(url, cwd, http, fname):
 
-# cli.add_option('-q', '--quiet', help='Do not output any message')
+    logger.info(f"Getting Newspaper URLs from {fname}")
 
-
-# @cli.command(cmd='start',
-#              help='Run command')
-# def foo_main(
-#         quiet: bool,
-#         url: str = Option(..., '-u', '--url', help='IIIF Collection URL')
-# ):
-#     urlregex = r"^(http|https)://((\S+):(\S+)@|.*)\.(com|de|org|edu|at|ch|fr|net|nrw).*$"
-#     validurl = re.search(urlregex, url)
-#     # https://regex101.com/r/2CCthx/1
-
-#     if validurl is None:
-#         sys.exit(f'{url} ist keine valide URL.')
-#     else:
-#         startbaytsing(url)
-
-def startbaytsing(url, cwd):
-    http = setup_requests()
-    logger.info("Getting Newspaper URLs")
-
-    if Path(cwd, 'newspaper_urls.pkl').exists():
-        with open(Path(cwd, 'newspaper_urls.pkl'), 'rb') as f:
+    if Path(cwd, fname).exists():
+        with open(Path(cwd, fname), 'rb') as f:
             newspaper_urls = pickle.load(f)
             logger.info("Loaded urls from pickled file")
     else:
         newspaper_urls = getNewspaperManifests(url, http)
 
     logger.info(f"{len(newspaper_urls)} Newspaper Issues")
+    return newspaper_urls
+
+
+async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, folder):
+
+    with ThreadPoolExecutor(max_workers=16) as executor:
+        with requests.Session() as session:
+            retry_strategy = Retry(
+                total=6,
+                status_forcelist=[429, 500, 502, 503, 504],
+                allowed_methods=["GET"],
+                backoff_factor=1
+            )
+            adapter = HTTPAdapter(max_retries=retry_strategy)
+            session.mount("https://", adapter)
+            session.mount("http://", adapter)
+            loop = asyncio.get_event_loop()
+            START_TIME = default_timer()
+            tasks = [
+                loop.run_in_executor(
+                    executor,
+                    parseMetadata,
+                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, folder) # Allows us to pass in multiple arguments to `parseMetadata`
+                )
+                for url in urls
+            ]
+
+            for url in await asyncio.gather(*tasks):
+                pass
+            logger.debug(
+                f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
+
+def start(newspaper_urls, cwd, http, folder):
 
     print("Generating METS Files")
 
-    newspaper = []
+    if Path(cwd, 'newspaperdata.pkl').exists():
+        with open(Path(cwd, 'newspaperdata.pkl'), 'rb') as f:
+            newspaper = pickle.load(f)
+            logger.info("Loaded newspaperdata from pickled file")
+    else:
+        newspaper = []
+
     issues = []
     # Wenn wir das als Update laufen lassen dann wollen wir ja ggf. nicht alle METS Dateien neu erzeugen lassen
     # sondern nur die zu den IDs die wir noch nicht haben
@@ -56,8 +80,15 @@ def startbaytsing(url, cwd):
         alreadygeneratedids = []
     else:
         alreadygeneratedids = []
-    for u in newspaper_urls:
-        parseMetadata(u, http, newspaper, issues, alreadygeneratedids, logger, cwd)
+
+    # ----------------------------------------------------------------
+    loop = asyncio.get_event_loop()
+    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, folder))
+    loop.run_until_complete(future)
+    # ----------------------------------------------------------------
+    with open('newspaperdata.pkl', 'wb') as f:
+            pickle.dump(newspaper, f)
+            logger.info(f"Wrote {len(newspaper)} newspaperdata to pickled file")
 
 if __name__ == '__main__':
     # cli.run()
@@ -70,6 +101,17 @@ if __name__ == '__main__':
             format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
             enqueue=True
         )
-    startbaytsing('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd)
+    http = setup_requests()
+
+    # newspaper_urls = getNewspaperManifests('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http)
+    newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
+
+    folder = Path(cwd, 'METS', time.strftime("%Y-%m-%d"))
+    if folder.exists():
+        pass
+    else:
+        folder.mkdir()
+
+    start(newspaper_urls, cwd, http, folder)
 
 
