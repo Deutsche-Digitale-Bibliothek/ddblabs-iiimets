@@ -32,9 +32,9 @@ def loadManifestURLsFromPickle(url, cwd, http, fname):
     return newspaper_urls
 
 
-async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder):
+async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads):
 
-    with ThreadPoolExecutor(max_workers=16) as executor:
+    with ThreadPoolExecutor(max_workers=threads) as executor:
         with requests.Session() as session:
             retry_strategy = Retry(
                 total=6,
@@ -61,9 +61,9 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
             logger.debug(
                 f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
-def start(newspaper_urls, cwd, http, metsfolder, altofolder):
+def start(newspaper_urls, cwd, http, metsfolder, altofolder, threads):
 
-    print("Generating METS Files")
+    print(f"Generating METS Files with {threads} Threads.")
 
     if Path(cwd, 'newspaperdata.pkl').exists():
         with open(Path(cwd, 'newspaperdata.pkl'), 'rb') as f:
@@ -83,7 +83,7 @@ def start(newspaper_urls, cwd, http, metsfolder, altofolder):
 
     # ----------------------------------------------------------------
     loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder))
+    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads))
     loop.run_until_complete(future)
     # ----------------------------------------------------------------
     with open('newspaperdata.pkl', 'wb') as f:
@@ -118,6 +118,6 @@ if __name__ == '__main__':
     else:
         altofolder.mkdir()
 
-    start(newspaper_urls, cwd, http, metsfolder, altofolder)
+    start(newspaper_urls, cwd, http, metsfolder, altofolder, 1)
 
 

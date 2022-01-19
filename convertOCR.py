@@ -9,7 +9,6 @@ import os
 def transformHOCR(urls, folder, logger):
     print("Transform hOCR")
     with saxonc.PySaxonProcessor(license=False) as proc:
-        xdmAtomicval = proc.make_boolean_value(False)
         xsltproc = proc.new_xslt_processor()
         xsltproc.compile_stylesheet(stylesheet_file="/home/cloud/baytsify/ocr_conversion/hOCR2ALTO.xsl")
 
