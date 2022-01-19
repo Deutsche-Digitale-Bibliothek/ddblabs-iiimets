@@ -32,7 +32,7 @@ def loadManifestURLsFromPickle(url, cwd, http, fname):
     return newspaper_urls
 
 
-async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, folder):
+async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder):
 
     with ThreadPoolExecutor(max_workers=16) as executor:
         with requests.Session() as session:
@@ -51,7 +51,7 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
                 loop.run_in_executor(
                     executor,
                     parseMetadata,
-                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, folder) # Allows us to pass in multiple arguments to `parseMetadata`
+                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder) # Allows us to pass in multiple arguments to `parseMetadata`
                 )
                 for url in urls
             ]
@@ -61,7 +61,7 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
             logger.debug(
                 f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
-def start(newspaper_urls, cwd, http, folder):
+def start(newspaper_urls, cwd, http, metsfolder, altofolder):
 
     print("Generating METS Files")
 
@@ -83,7 +83,7 @@ def start(newspaper_urls, cwd, http, folder):
 
     # ----------------------------------------------------------------
     loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, folder))
+    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder))
     loop.run_until_complete(future)
     # ----------------------------------------------------------------
     with open('newspaperdata.pkl', 'wb') as f:
@@ -106,12 +106,18 @@ if __name__ == '__main__':
     # newspaper_urls = getNewspaperManifests('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http)
     newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
 
-    folder = Path(cwd, 'METS', time.strftime("%Y-%m-%d"))
-    if folder.exists():
+    metsfolder = Path(cwd, 'METS', time.strftime("%Y-%m-%d"))
+    if metsfolder.exists():
         pass
     else:
-        folder.mkdir()
+        metsfolder.mkdir()
 
-    start(newspaper_urls, cwd, http, folder)
+    altofolder = Path(cwd, 'ALTO', time.strftime("%Y-%m-%d"))
+    if altofolder.exists():
+        pass
+    else:
+        altofolder.mkdir()
+
+    start(newspaper_urls, cwd, http, metsfolder, altofolder)
 
 

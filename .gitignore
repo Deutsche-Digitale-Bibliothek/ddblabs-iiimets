@@ -6,3 +6,4 @@ __pycache__/*
 newspaper.txt
 ids_of_generated_mets.txt
 iiif_conversion.py
+jet_err_*
