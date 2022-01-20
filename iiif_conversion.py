@@ -36,21 +36,16 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
         return x
 
     def flgrp_fulltext(ocr):
-        '''
-        ocr ist eine Liste mit URLs
-        '''
-        # Übergebe Liste mit hOCR Links der Funktion transformHOCR(), die das transformierte ALTO auf der Festplatte speichert
-        transformHOCR(ocr, altofolder, logger)
+
 
         n = 0
         x = ''
         # Filegroup erstellen mit lokalen Links
         for i in ocr:
             # i ist eine URL, bspw. https://api.digitale-sammlungen.de/ocr/bsb00001098/193
-            filename = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+)/(.+)', r'\1_\2.xml', i)
             n += 1
             x += f'''<mets:file MIMETYPE="text/xml" ID="{"ocr_" + str(n)}" SEQ="{n}">
-    <mets:FLocat LOCTYPE="URL" xlink:href="{filename}" />
+    <mets:FLocat LOCTYPE="URL" xlink:href="{i}" />
     </mets:file>'''
         return x
 
