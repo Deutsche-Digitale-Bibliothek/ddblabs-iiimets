@@ -8,7 +8,7 @@
     xmlns="http://www.loc.gov/standards/alto/ns-v2#"
     exclude-result-prefixes="xs o a"
     version="2.0">
-
+    
     <xsl:import href="hOCRUtil.xsl"/>
     
     <!--
@@ -44,7 +44,7 @@
             </xsl:otherwise>
         </xsl:choose>
     </xsl:variable>
-
+    
     <xsl:output indent="yes"/>
     
     <!-- match html document and start alto output -->
@@ -54,7 +54,7 @@
                 <MeasurementUnit>pixel</MeasurementUnit>
             </Description>
             <Layout>
-               <xsl:apply-templates select="h:body/*"/>
+                <xsl:apply-templates select="h:body/*"/>
             </Layout>
         </alto>
     </xsl:template>
@@ -64,9 +64,7 @@
         <xsl:variable name="bbox">
             <xsl:call-template name="getBbox"/>
         </xsl:variable>
-        <xsl:variable name="pageNo">
-            <xsl:call-template name="getPpageno"/>
-        </xsl:variable>
+        <xsl:variable name="pageNo" select="/h:html/h:head/h:title"/>
         <!-- the aggregation of all OCR Dimensions to define the printed area bounding box -->
         <xsl:variable name="printSpaceDim">
             <xsl:call-template name="getAggregateDimensions"/>
@@ -75,9 +73,11 @@
             <xsl:attribute name="HEIGHT"><xsl:value-of select="o:bboxGetHeight($bbox)"/></xsl:attribute>
             <xsl:attribute name="WIDTH"><xsl:value-of select="o:bboxGetWidth($bbox)"/></xsl:attribute>
             <xsl:attribute name="PHYSICAL_IMG_NR">
-                <xsl:call-template name="getPpageno"/>
+                <xsl:value-of select="substring-after($pageNo, '_')"/>
             </xsl:attribute>
-            <xsl:attribute name="ID">PageImg_<xsl:value-of select="$pageNo"/></xsl:attribute>
+            <xsl:attribute name="ID">
+                <xsl:value-of select="concat('PageImg_1', $pageNo)"/>
+            </xsl:attribute>
             <PrintSpace>
                 <xsl:attribute name="WIDTH" select="o:bboxGetWidth($printSpaceDim)"/>
                 <xsl:attribute name="HEIGHT" select="o:bboxGetHeight($printSpaceDim)"/>
@@ -133,7 +133,7 @@
             <xsl:apply-templates/>
         </TextLine>
     </xsl:template>
-
+    
     <!-- process ocrx_word -->
     <!-- TODO missing distinction between String and SP -->
     <xsl:template match="h:*[@class='ocrx_word' and .//text()]">
@@ -169,4 +169,8 @@
         <xsl:attribute name="VPOS" select="o:bboxGetY($bbox)"/>
         <xsl:attribute name="HPOS" select="o:bboxGetX($bbox)"/>
     </xsl:template>
+    
+    <!-- Nicht erlaubte Textknoten entfernen -->
+    <xsl:template match="h:*[h:*][matches(string-join(text(), ''), '\w')]/text()" priority="-100"/>
+    
 </xsl:stylesheet>
