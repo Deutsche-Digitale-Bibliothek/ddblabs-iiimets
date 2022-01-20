@@ -9,8 +9,8 @@ import os
 def transformHOCR(urls, folder, logger, proc, xsltproc):
     print("Transform hOCR")
 
-    # xsltproc.compile_stylesheet(stylesheet_file="ocr_conversion/hOCR2ALTO.xsl")
-    xsltproc.compile_stylesheet(stylesheet_file="ocr_conversion/hocr__alto3.xsl")
+    xsltproc.compile_stylesheet(stylesheet_file="ocr_conversion/hOCR2ALTO.xsl")
+    #xsltproc.compile_stylesheet(stylesheet_file="ocr_conversion/hocr__alto3.xsl")
 
     for u in urls:
         filename = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+)/(.+)', r'\1_\2.xml', u)

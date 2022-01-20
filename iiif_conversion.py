@@ -22,7 +22,7 @@ import pickle
 from operator import itemgetter
 from convertOCR import transformHOCR
 
-def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
+def generateMETS(metadata, logger, cwd, metsfolder, altofolder, proc, xsltproc):
 
     def flgrp_default(images):
         n = 0
@@ -35,7 +35,7 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     </mets:file>'''
         return x
 
-    def flgrp_fulltext(ocr):
+    def flgrp_fulltext_hocr(ocr):
 
 
         n = 0
@@ -48,6 +48,26 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     <mets:FLocat LOCTYPE="URL" xlink:href="{i}" />
     </mets:file>'''
         return x
+
+    def flgrp_fulltext(ocr, proc, xsltproc):
+        '''
+        ocr ist eine Liste mit URLs
+        '''
+        # Übergebe Liste mit hOCR Links der Funktion transformHOCR(), die das transformierte ALTO auf der Festplatte speichert
+        transformHOCR(ocr, altofolder, logger, proc, xsltproc)
+
+        n = 0
+        x = ''
+        # Filegroup erstellen mit lokalen Links
+        for i in ocr:
+            # i ist eine URL, bspw. https://api.digitale-sammlungen.de/ocr/bsb00001098/193
+            filename = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+)/(.+)', r'\1_\2.xml', i)
+            n += 1
+            x += f'''<mets:file MIMETYPE="text/xml" ID="{"ocr_" + str(n)}" SEQ="{n}">
+    <mets:FLocat LOCTYPE="URL" xlink:href="{filename}" />
+    </mets:file>'''
+        return x
+
 
     def flgrp_thumbs(images):
         n = 0
@@ -688,7 +708,7 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
                 {flgrp_default(metadata['images'])}
             </mets:fileGrp>
     <mets:fileGrp USE="FULLTEXT">
-                {flgrp_fulltext(metadata['ocr'])}
+                {flgrp_fulltext(metadata['ocr'], proc, xsltproc)}
             </mets:fileGrp>
     <mets:fileGrp USE="THUMBS">
                 {flgrp_thumbs(metadata['images'])}
@@ -846,7 +866,7 @@ def getNewspaperData(id, session, newspaper):
 
     return zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel, newspaper
 
-def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder):
+def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, proc, xsltproc):
     # Daten laden
     # logger.debug(manifesturl)
     try:
@@ -917,22 +937,20 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
         metadata['images'] = images
         metadata['ocr'] = ocr
         # fertiges Dict an die Liste der Issues appenden
-        generateMETS(metadata, logger, cwd, metsfolder, altofolder)
+        generateMETS(metadata, logger, cwd, metsfolder, altofolder, proc, xsltproc)
         issues.append(metadata)
 
-def convertManifestsToMETS(manifesturls):
-    for u in manifesturls:
-        parseMetadata(u, http)
 # -------------------------------------------------------------------------------------
 if __name__ == '__main__':
-    newspaper = []
-    issues = []
+    pass
+    # newspaper = []
+    # issues = []
 
-    http = setup_requests()
-    logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="INFO")
-    alreadygeneratedids = ""
-    manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00003_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00037_u001/manifest']
-    for u in manifesturls:
-        parseMetadata(u, http, newspaper, issues, alreadygeneratedids, logger, Path.cwd(), '/Users/karl/Coding/baytsify/METS', '/Users/karl/Coding/baytsify/ALTO')
-    with open('newspaperdata.pkl', 'wb') as f:
-            pickle.dump(newspaper, f)
+    # http = setup_requests()
+    # logger.add(sys.stderr, format="{time} {level} {message}", filter="my_module", level="INFO")
+    # alreadygeneratedids = ""
+    # manifesturls = ['https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00003_u001/manifest', 'https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00037_u001/manifest']
+    # for u in manifesturls:
+    #     parseMetadata(u, http, newspaper, issues, alreadygeneratedids, logger, Path.cwd(), '/Users/karl/Coding/baytsify/METS', '/Users/karl/Coding/baytsify/ALTO')
+    # with open('newspaperdata.pkl', 'wb') as f:
+    #         pickle.dump(newspaper, f)

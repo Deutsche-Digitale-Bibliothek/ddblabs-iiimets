@@ -1,5 +1,5 @@
 from iiif_harvesting import getNewspaperManifests
-from iiif_conversion import convertManifestsToMETS, parseMetadata, setup_requests
+from iiif_conversion import parseMetadata, setup_requests
 from pathlib import Path
 import pickle
 import requests
@@ -9,6 +9,8 @@ import re
 import time
 from timeit import default_timer
 import sys
+sys.path.append('/home/cloud/python-saxon')
+import saxonc
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import asyncio
@@ -32,7 +34,7 @@ def loadManifestURLsFromPickle(url, cwd, http, fname):
     return newspaper_urls
 
 
-async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads):
+async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads, proc, xsltproc):
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
         with requests.Session() as session:
@@ -45,13 +47,15 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
             adapter = HTTPAdapter(max_retries=retry_strategy)
             session.mount("https://", adapter)
             session.mount("http://", adapter)
+
+
             loop = asyncio.get_event_loop()
             START_TIME = default_timer()
             tasks = [
                 loop.run_in_executor(
                     executor,
                     parseMetadata,
-                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder) # Allows us to pass in multiple arguments to `parseMetadata`
+                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, proc, xsltproc) # Allows us to pass in multiple arguments to `parseMetadata`
                 )
                 for url in urls
             ]
@@ -61,7 +65,7 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
             logger.debug(
                 f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
-def start(newspaper_urls, cwd, http, metsfolder, altofolder, threads):
+def start(newspaper_urls, cwd, http, metsfolder, altofolder, threads, proc, xsltproc):
 
     print(f"Generating METS Files with {threads} Threads.")
 
@@ -83,7 +87,7 @@ def start(newspaper_urls, cwd, http, metsfolder, altofolder, threads):
 
     # ----------------------------------------------------------------
     loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads))
+    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads, proc, xsltproc))
     loop.run_until_complete(future)
     # ----------------------------------------------------------------
     with open('newspaperdata.pkl', 'wb') as f:
@@ -104,7 +108,7 @@ if __name__ == '__main__':
     http = setup_requests()
 
     # newspaper_urls = getNewspaperManifests('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http)
-    newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
+    newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'newspaper_urls.pkl')
 
     metsfolder = Path(cwd, 'METS', time.strftime("%Y-%m-%d"))
     if metsfolder.exists():
@@ -117,7 +121,10 @@ if __name__ == '__main__':
         pass
     else:
         altofolder.mkdir()
-
-    start(newspaper_urls, cwd, http, metsfolder, altofolder, 1)
+    # --------------------------------------------------
+    proc = saxonc.PySaxonProcessor(license=False)
+    xsltproc = proc.new_xslt_processor()
+    xsltproc.compile_stylesheet(stylesheet_file="ocr_conversion/hOCR2ALTO.xsl")
+    start(newspaper_urls, cwd, http, metsfolder, altofolder, 1, proc, xsltproc)
 
 
