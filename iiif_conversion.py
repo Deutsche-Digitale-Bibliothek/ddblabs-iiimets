@@ -6,7 +6,6 @@
 # @Link   :
 # @Date   : 17.12.2021, 13:01:16
 
-from dataclasses import dataclass
 from datetime import datetime
 from lxml import etree
 from requests.adapters import HTTPAdapter
@@ -20,7 +19,6 @@ import time
 import sys
 import pickle
 from operator import itemgetter
-from convertOCR import transformHOCR
 
 def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
 
@@ -36,7 +34,6 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
         return x
 
     def flgrp_fulltext(ocr):
-
 
         n = 0
         x = ''
@@ -85,6 +82,7 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     '''
     XML Template zum füllen
     '''
+    # ! TODO issue_no
     volume=issue_no=ausgabe=IdentifierSource=originInfo=digitizationyear = ''
     url = 'https://digipress.digitale-sammlungen.de'
     logo = 'https://api.digitale-sammlungen.de/iiif/images/bsb_logo.png'
