@@ -12,21 +12,43 @@ import sys
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import asyncio
-# import click
+import argparse
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# @click.command()
-# @click.option('--url', default='https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', help='IIIF Collection URL')
-# @click.option('--fname', prompt='Filename', help='The person to greet.')
-def loadManifestURLsFromPickle(url, cwd, http, fname):
+def parseargs():
+    urlregex = r"^(http|https)://((\S+):(\S+)@|.*)\.(com|de|org|edu|at|ch|fr|net|nrw).*$"
+    parser = argparse.ArgumentParser(
+        description='A OAI-PMH Harvester using ListIdentifiers and GetRecord verbs.'
+    )
+
+    parser.add_argument('--url', dest='url', help='URL of IIIF Collection to harvest')
+    parser.add_argument('--file', dest='file', help='Filename to pickeld URL list')
+    parser.add_argument('--no-cache', required=False, dest='cache', action='store_true', help='If set, no cache is used')
+
+    args = vars(parser.parse_args())
+    if not any(args.values()):
+        parser.error('No arguments provided.')
+        sys.exit()
+    else:
+        url = args['url']
+        file = args['file']
+        cache = args['cache']
+        if url is not None:
+            if re.match(urlregex, url):
+                url = url
+            else:
+                parser.error('URL is not valid.')
+        return url, file, cache
+
+def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fname: str, filter, logger) -> list:
     '''
     Braucht entweder eine IIIF-Collection URL oder eine Liste mit URLs als Pickle Datei
     '''
     if url is not None:
         logger.info(f"Getting Newspaper URLs from {fname}")
-        newspaper_urls = getNewspaperManifests(url, http)
+        newspaper_urls = getNewspaperManifests(url, http, filter, cwd, logger)
     else:
         if Path(cwd, 'cache', fname).exists():
             with open(Path(cwd, 'cache', fname), 'rb') as f:
@@ -70,18 +92,26 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
                 f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
 
-def start(newspaper_urls, cwd, http, metsfolder, altofolder, threads):
+def start(newspaper_urls, cwd, metsfolder, altofolder, threads, caching):
     '''
     Übergibt die URLs der IIIF Manifeste und andere zuvor gesammelte Variablen der
+    newspaper_urls: Liste
+    cwd: Path
+    metsfolder: Path
+    altofolder: Path
+    threads: Int
+    caching: Bool
     '''
     print(f"Generating METS Files with {threads} Threads.")
 
     # Inbfos aus dem Cache laden
-
-    if Path(cwd, 'cache', 'newspaperdata.pkl').exists():
-        with open(Path(cwd, 'cache', 'newspaperdata.pkl'), 'rb') as f:
-            newspaper = pickle.load(f)
-            logger.info(f"Loaded {len(newspaper)} newspaperdata from pickled file")
+    if caching == True:
+        if Path(cwd, 'cache', 'newspaperdata.pkl').exists():
+            with open(Path(cwd, 'cache', 'newspaperdata.pkl'), 'rb') as f:
+                newspaper = pickle.load(f)
+                logger.info(f"Loaded {len(newspaper)} newspaperdata from pickled file")
+        else:
+            newspaper = []
     else:
         newspaper = []
 
@@ -124,9 +154,12 @@ if __name__ == '__main__':
     # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
 
     # newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
-    newspaper_urls = loadManifestURLsFromPickle(None, cwd, http, 'newspaper_urls.pkl')
+    url, file, cache = parseargs()
+    newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
+
     if len(newspaper_urls) == 0:
         sys.exit()
+
     # Folder Creation
 
     metsfolder = Path(cwd, '_METS', time.strftime("%Y-%m-%d"))
@@ -143,6 +176,6 @@ if __name__ == '__main__':
 
     # Cache lesen und Threading starten:
 
-    start(newspaper_urls, cwd, http, metsfolder, altofolder, 1)
+    start(newspaper_urls, cwd, metsfolder, altofolder, 16, True)
 
 
