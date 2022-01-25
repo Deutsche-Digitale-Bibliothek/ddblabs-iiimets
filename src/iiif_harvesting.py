@@ -10,7 +10,7 @@ import pandas as pd
 import sys
 import pickle
 import time
-
+from pathlib import Path
 
 '''
 - Get first (https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial)
@@ -72,12 +72,19 @@ def getIdentifier(url, session):
                     break
     return manifests
 
-def getNewspaperManifests(url, session):
+def getNewspaperManifests(url, session, filter: str, cwd, logger):
     manifests = getIdentifier(url, session)
     df = pd.DataFrame.from_records(manifests)
     df.to_pickle('allmanifests.pkl')
-    newspaper_urls = df.query('name.str.contains("##")', engine="python")['url'].to_list()
-    with open('newspaper_urls.pkl', 'wb') as f:
+    # newspaper_urls = df.query('name.str.contains("##")', engine="python")['url'].to_list()
+
+    if filter is not None:
+        logger.info(f"Filter Manifests by {filter}")
+        newspaper_urls = df.query(f'name.str.contains("{filter}")', engine="python")['url'].to_list()
+    else:
+        newspaper_urls = df['url'].to_list()
+
+    with open(Path(cwd, 'cache', 'newspaper_urls.pkl'), 'wb') as f:
         pickle.dump(newspaper_urls, f)
     return newspaper_urls
 
