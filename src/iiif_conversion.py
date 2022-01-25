@@ -83,7 +83,7 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     XML Template zum füllen
     '''
     # ! TODO issue_no
-    volume=issue_no=IdentifierSource=originInfo=digitizationyear = ''
+    volume=issue_no=originInfo=digitizationyear = ''
     url = 'https://digipress.digitale-sammlungen.de'
     logo = 'https://api.digitale-sammlungen.de/iiif/images/bsb_logo.png'
     r = r'(.+)##\s(.+),(.+)'
@@ -593,9 +593,6 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     <metadata>
     <mets:mets OBJID="{metadata['id']}" TYPE="newspaper" xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-7.xsd http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd">
     <mets:metsHdr LASTMODDATE="{time.strftime("%Y-%m-%dT%H:%M:%SZ")}">
-    <mets:agent xmlns:dv="http://dfg-viewer.de/" ROLE="CREATOR" TYPE="ORGANIZATION">
-    <mets:name>{metadata['dataprovider']}</mets:name>
-    </mets:agent>
     </mets:metsHdr>
     <mets:dmdSec ID="dmd">
     <mets:mdWrap MDTYPE="MODS">
@@ -614,6 +611,9 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     <mods:originInfo eventType="publication">
     <mods:dateIssued encoding="iso8601">{isodate}</mods:dateIssued>
     {'<mods:publisher>' + metadata['publisher'] + '</mods:publisher>' if 'publisher' in metadata and metadata['publisher'] != '' else ''}
+    </mods:originInfo>
+    <mods:originInfo eventType="digitization">
+    <mods:publisher>{metadata['dataprovider']}</mods:publisher>
     </mods:originInfo>
     <mods:language>
     <mods:languageTerm type="code" valueURI="http://id.loc.gov/vocabulary/iso639-2/ger">{sprache}</mods:languageTerm>
@@ -637,6 +637,7 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
     <mods:accessCondition type="use and reproduction" xlink:href="https://creativecommons.org/publicdomain/mark/1.0/">Public Domain Mark 1.0</mods:accessCondition>
     <mods:recordInfo>
     <mods:recordIdentifier source="DE-12">{metadata['id']}</mods:recordIdentifier>
+    <mods:recordInfoNote type="license">http://creativecommons.org/publicdomain/zero/1.0</mods:recordInfoNote>
     </mods:recordInfo>
     <mods:genre valueURI="http://ddb.vocnet.org/hierarchietyp/ht014" displayLabel="document type">issue</mods:genre>
     <mods:typeOfResource valueURI="http://ddb.vocnet.org/medientyp/mt003">text</mods:typeOfResource>

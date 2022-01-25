@@ -24,6 +24,7 @@ START_TIME = default_timer()
 def fetch(session, url, outfolder):
 
     with session.get(url) as response:
+        response.encoding = 'utf-8'
         data = response.text
         if response.status_code != 200:
             logger.critical(f"Statuscode {response.status_code} bei {url}")
@@ -71,9 +72,9 @@ logname = time.strftime("%Y-%m-%d_%H%M") + ".log"
 # Einen stderr-Logger initialisieren
 logger.add(sys.stderr, format="<green>{time}</green> {level} {message}")
 # Einen Logger initialisieren, der in eine Datei im ausgewhlten Verzeichnis schreibt
-logger.add(
-    logname,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>", encoding="utf8")
+# logger.add(
+#     logname,
+#     format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>", encoding="utf8")
 # -----------------------------------------------------------------------------
 
 namespaces = {"alto": "http://www.loc.gov/standards/alto/ns-v3#", "xlink": "http://www.w3.org/1999/xlink",
@@ -95,6 +96,14 @@ for f in files:
 
 logger.info(f"Starte Download von {len(alto_urls)} urls")
 
-# main(alto_urls, outfolder)
+main(alto_urls, outfolder)
 
-# TODO in jede XML Datei rein, Link anpassen & hOCR zu ALTO transformieren
+# Change Links
+# for f in files:
+#     with open(f, 'r+', encoding='utf8') as fl:
+#         cont = fl.read()
+#         cont = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+?)/(.+)"', r'\1_\2.xml"', cont)
+#         fl.write(cont)
+
+
+# TODO hOCR zu ALTO transformieren

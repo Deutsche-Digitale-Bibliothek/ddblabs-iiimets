@@ -25,7 +25,8 @@ def parseargs():
 
     parser.add_argument('--url', dest='url', help='URL of IIIF Collection to harvest')
     parser.add_argument('--file', dest='file', help='Filename to pickeld URL list')
-    parser.add_argument('--no-cache', required=False, dest='cache', action='store_true', help='If set, no cache is used')
+    parser.add_argument('--no-cache', required=False, dest='cache', action='store_false', help='If set, no cache is used')
+    parser.add_argument('--no-update', required=False, dest='update', action='store_false', help='If set, update functionality is disabled')
 
     args = vars(parser.parse_args())
     if not any(args.values()):
@@ -35,12 +36,13 @@ def parseargs():
         url = args['url']
         file = args['file']
         cache = args['cache']
+        update = args['update']
         if url is not None:
             if re.match(urlregex, url):
                 url = url
             else:
                 parser.error('URL is not valid.')
-        return url, file, cache
+        return url, file, cache, update
 
 def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fname: str, filter, logger) -> list:
     '''
@@ -92,15 +94,9 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
                 f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
 
-def start(newspaper_urls, cwd, metsfolder, altofolder, threads, caching):
+def start(newspaper_urls: list, cwd: Path, metsfolder: Path, altofolder: Path, threads: int, caching: bool, update: bool):
     '''
     Übergibt die URLs der IIIF Manifeste und andere zuvor gesammelte Variablen der
-    newspaper_urls: Liste
-    cwd: Path
-    metsfolder: Path
-    altofolder: Path
-    threads: Int
-    caching: Bool
     '''
     print(f"Generating METS Files with {threads} Threads.")
 
@@ -117,10 +113,13 @@ def start(newspaper_urls, cwd, metsfolder, altofolder, threads, caching):
 
     # Wenn wir das als Update laufen lassen dann wollen wir ja ggf. nicht alle METS Dateien neu erzeugen lassen
     # sondern nur die zu den IDs die wir noch nicht haben
-
-    if Path(cwd, 'cache', 'ids_of_generated_mets.txt').exists():
-        alreadygeneratedids = [line.rstrip('\n') for line in open(Path(cwd, 'cache', 'ids_of_generated_mets.txt'))]
-        # alreadygeneratedids = []
+    if update == True:
+        logger.info("Running as Update")
+        if Path(cwd, 'cache', 'ids_of_generated_mets.txt').exists():
+            alreadygeneratedids = [line.rstrip('\n') for line in open(Path(cwd, 'cache', 'ids_of_generated_mets.txt'))]
+        else:
+            logger.info("")
+            alreadygeneratedids = []
     else:
         alreadygeneratedids = []
 
@@ -139,6 +138,10 @@ def start(newspaper_urls, cwd, metsfolder, altofolder, threads, caching):
 if __name__ == '__main__':
     cwd = Path.cwd()
 
+    # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
+
+    # newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
+    url, file, cache, update = parseargs()
     # Log initialisieren
     logname = Path(cwd, time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log")
     PARAMETER = logger.level("PARAMETER", no=38, color="<blue>")
@@ -151,10 +154,6 @@ if __name__ == '__main__':
 
     http = setup_requests()
 
-    # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
-
-    # newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
-    url, file, cache = parseargs()
     newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
 
     if len(newspaper_urls) == 0:
@@ -176,6 +175,6 @@ if __name__ == '__main__':
 
     # Cache lesen und Threading starten:
 
-    start(newspaper_urls, cwd, metsfolder, altofolder, 16, True)
+    start(newspaper_urls, cwd, metsfolder, altofolder, 16, cache, update)
 
 
