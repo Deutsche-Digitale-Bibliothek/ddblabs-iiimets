@@ -13,11 +13,13 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 import os
+import subprocess
 from timeit import default_timer
 import lxml.etree as ET
 import sys
 import time
 import re
+from pathlib import Path
 
 START_TIME = default_timer()
 
@@ -58,52 +60,53 @@ async def get_data_asynchronous(alto_urls, outfolder):
                 for url in alto_urls
             ]
 
-
-
 def main(alto_urls, outfolder):
     loop = asyncio.get_event_loop()
     future = asyncio.ensure_future(get_data_asynchronous(alto_urls, outfolder))
     loop.run_until_complete(future)
     logger.debug(f"Vergangene Zeit für den OCR Abruf: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
-# -----------------------------------------------------------------------------
-logger.remove()
-logname = time.strftime("%Y-%m-%d_%H%M") + ".log"
-# Einen stderr-Logger initialisieren
-logger.add(sys.stderr, format="<green>{time}</green> {level} {message}")
-# Einen Logger initialisieren, der in eine Datei im ausgewhlten Verzeichnis schreibt
-# logger.add(
-#     logname,
-#     format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>", encoding="utf8")
-# -----------------------------------------------------------------------------
 
-namespaces = {"alto": "http://www.loc.gov/standards/alto/ns-v3#", "xlink": "http://www.w3.org/1999/xlink",
-              "mets": "http://www.loc.gov/METS/", "mods": "http://www.loc.gov/mods/v3"}
+def downloadhOCR(metsfolder, hocrfolder):
 
-folder = '/Users/karl/Coding/iiimets/_METS/2022-01-25'
-outfolder = '/Users/karl/Coding/iiimets/_OCR/2022-01-25'
-files = [os.path.join(folder, x) for x in os.listdir(folder) if x.endswith('xml')]
-
-alto_urls = []
-logger.info(f"Parse {len(files)} Dateien nach Volltext Links")
-for f in files:
-    tree = ET.parse(bytes(f,encoding='utf8'))
-    fulltextMets_file = tree.findall(f".//mets:fileGrp[@USE='FULLTEXT']/mets:file[@MIMETYPE = 'text/xml']", namespaces)
-    for e in fulltextMets_file:
-        for flocat in e:
-            altourl = flocat.attrib['{http://www.w3.org/1999/xlink}href']
-            alto_urls.append(altourl)
-
-logger.info(f"Starte Download von {len(alto_urls)} urls")
-
-main(alto_urls, outfolder)
-
-# Change Links
-# for f in files:
-#     with open(f, 'r+', encoding='utf8') as fl:
-#         cont = fl.read()
-#         cont = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+?)/(.+)"', r'\1_\2.xml"', cont)
-#         fl.write(cont)
+    namespaces = {"alto": "http://www.loc.gov/standards/alto/ns-v3#", "xlink": "http://www.w3.org/1999/xlink",
+                "mets": "http://www.loc.gov/METS/", "mods": "http://www.loc.gov/mods/v3"}
 
 
-# TODO hOCR zu ALTO transformieren
+
+
+    files = [os.path.join(metsfolder, x) for x in os.listdir(metsfolder) if x.endswith('xml')]
+
+    alto_urls = []
+    logger.info(f"Parse {len(files)} Dateien nach Volltext Links")
+    for f in files:
+        tree = ET.parse(bytes(f,encoding='utf8'))
+        fulltextMets_file = tree.findall(f".//mets:fileGrp[@USE='FULLTEXT']/mets:file[@MIMETYPE = 'text/xml']", namespaces)
+        for e in fulltextMets_file:
+            for flocat in e:
+                altourl = flocat.attrib['{http://www.w3.org/1999/xlink}href']
+                alto_urls.append(altourl)
+
+    logger.info(f"Starte Download von {len(alto_urls)} urls")
+
+    main(alto_urls, hocrfolder)
+
+    # Change Links
+    for f in files:
+        with open(f, 'r+', encoding='utf8') as fl:
+            cont = fl.read()
+            cont = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+?)/(.+)"', r'\1_\2.xml"', cont)
+            fl.write(cont)
+
+def runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath):
+
+    xsl = Path(cwd, 'src', 'xslt', 'hOCR2ALTO.xsl')
+    subprocessargs = f"{saxonpath} -s:{hocrfolder} -o:{altofolder} -xsl:{xsl}".split(' ')
+    logger.info(f"Starte Saxon XSLT Processing")
+    try:
+        transformationoutput = subprocess.check_output(subprocessargs, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        transformationoutput = str(e.output, 'utf-8')
+        if len(re.findall(r'\d+\stransformations failed', transformationoutput)) == 1:
+            logger.warning(re.findall(r'\d+\stransformations failed', transformationoutput)[0])
+

@@ -1,6 +1,8 @@
 from src.iiif_harvesting import getNewspaperManifests
 from src.iiif_conversion import parseMetadata, setup_requests
+from src.download_ocrxml import downloadhOCR, runXSLonFolder
 from pathlib import Path
+import subprocess
 import pickle
 import requests
 from progress.bar import ChargingBar
@@ -13,6 +15,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 import asyncio
 import argparse
+import shutil
 from concurrent.futures import ThreadPoolExecutor
 from loguru import logger
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -64,7 +67,7 @@ def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fnam
     return newspaper_urls
 
 
-async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads):
+async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, threads):
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
         with requests.Session() as session:
@@ -83,7 +86,7 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
                 loop.run_in_executor(
                     executor,
                     parseMetadata,
-                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder) # Allows us to pass in multiple arguments to `parseMetadata`
+                    *(url, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder) # Allows us to pass in multiple arguments to `parseMetadata`
                 )
                 for url in urls
             ]
@@ -94,7 +97,7 @@ async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, lo
                 f"Vergangene Zeit: {round((default_timer() - START_TIME) / 60, 2)} Minuten")
 
 
-def start(newspaper_urls: list, cwd: Path, metsfolder: Path, altofolder: Path, threads: int, caching: bool, update: bool):
+def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, caching: bool, update: bool):
     '''
     Übergibt die URLs der IIIF Manifeste und andere zuvor gesammelte Variablen der
     '''
@@ -127,7 +130,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, altofolder: Path, t
 
     # ----------------------------------------------------------------
     loop = asyncio.get_event_loop()
-    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder, threads))
+    future = asyncio.ensure_future(get_data_asynchronous(newspaper_urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, threads))
     loop.run_until_complete(future)
     # ----------------------------------------------------------------
     # Cleanup: Infos pickeln
@@ -137,10 +140,14 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, altofolder: Path, t
 
 if __name__ == '__main__':
     cwd = Path.cwd()
-
+    try:
+        saxonpath = subprocess.check_output(["which", "saxon"])
+    except:
+        sys.exit('no saxon')
+    else:
+        saxonpath = str(saxonpath.splitlines()[0], 'utf-8')
     # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
 
-    # newspaper_urls = loadManifestURLsFromPickle('https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial', cwd, http, 'one_url_for_every_newspaper.pkl')
     url, file, cache, update = parseargs()
     # Log initialisieren
     logname = Path(cwd, time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log")
@@ -153,7 +160,7 @@ if __name__ == '__main__':
         )
 
     http = setup_requests()
-
+    date = time.strftime("%Y-%m-%d")
     newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
 
     if len(newspaper_urls) == 0:
@@ -161,20 +168,36 @@ if __name__ == '__main__':
 
     # Folder Creation
 
-    metsfolder = Path(cwd, '_METS', time.strftime("%Y-%m-%d"))
+    metsfolder = Path(cwd, '_METS', date)
     if metsfolder.exists():
         pass
     else:
         metsfolder.mkdir()
 
-    altofolder = Path(cwd, '_OCR', time.strftime("%Y-%m-%d"))
+    hocrfolder = Path(cwd, '_OCR', date, 'hOCR')
+    if hocrfolder.exists():
+        pass
+    else:
+        Path(cwd, '_OCR', date).mkdir()
+        hocrfolder.mkdir()
+
+    altofolder = Path(hocrfolder.parent, 'ALTO')
     if altofolder.exists():
         pass
     else:
         altofolder.mkdir()
-
     # Cache lesen und Threading starten:
 
-    start(newspaper_urls, cwd, metsfolder, altofolder, 16, cache, update)
-
+    start(newspaper_urls, cwd, metsfolder, 16, cache, update)
+    downloadhOCR(metsfolder, hocrfolder)
+    runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath)
+    # erstelle ZIPs
+    logger.info('Erstelle ZIP Dateien')
+    shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
+    shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
+    # Cleanup
+    logger.info('Starte Cleanup')
+    shutil.rmtree(hocrfolder)
+    shutil.rmtree(altofolder)
+    shutil.rmtree(metsfolder)
 
