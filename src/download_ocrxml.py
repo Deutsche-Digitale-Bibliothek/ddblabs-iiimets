@@ -72,9 +72,6 @@ def downloadhOCR(metsfolder, hocrfolder):
     namespaces = {"alto": "http://www.loc.gov/standards/alto/ns-v3#", "xlink": "http://www.w3.org/1999/xlink",
                 "mets": "http://www.loc.gov/METS/", "mods": "http://www.loc.gov/mods/v3"}
 
-
-
-
     files = [os.path.join(metsfolder, x) for x in os.listdir(metsfolder) if x.endswith('xml')]
 
     alto_urls = []

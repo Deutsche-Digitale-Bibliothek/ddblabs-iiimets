@@ -20,7 +20,7 @@ import sys
 import pickle
 from operator import itemgetter
 
-def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
+def generateMETS(metadata, logger, cwd, metsfolder):
 
     def flgrp_default(images):
         n = 0
@@ -719,7 +719,7 @@ def generateMETS(metadata, logger, cwd, metsfolder, altofolder):
         # log which IDs have already been generated as METS
         with open(Path(cwd, 'ids_of_generated_mets.txt'), 'a', encoding='utf8') as f:
             f.write(metadata['id'] + "\n")
-        logger.info(f"{metadata['id']}.xml erfolgreich erstellt")
+        # logger.info(f"{metadata['id']}.xml erfolgreich erstellt")
 
 def setup_requests() -> requests.Session:
     """Sets up a requests session to automatically retry on errors
@@ -835,7 +835,7 @@ def getNewspaperData(id, session, newspaper):
 
     return zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel, newspaper
 
-def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, altofolder):
+def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder):
     # Daten laden
     # logger.debug(manifesturl)
     try:
@@ -870,7 +870,7 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
             metadata[e['label'][0]['@value']] = e['value']
 
     if metadata['id'] in alreadygeneratedids:
-        logger.info(f"Skip conversion of previously generated METS file for {metadata['id']}")
+        # logger.info(f"Skip conversion of previously generated METS file for {metadata['id']}")
         pass
     else:
         if not re.search(r'\s##\s', metadata['Titel']):
@@ -906,7 +906,7 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
         metadata['images'] = images
         metadata['ocr'] = ocr
         # fertiges Dict an die Liste der Issues appenden
-        generateMETS(metadata, logger, cwd, metsfolder, altofolder)
+        generateMETS(metadata, logger, cwd, metsfolder)
         issues.append(metadata)
 
 def convertManifestsToMETS(manifesturls):
