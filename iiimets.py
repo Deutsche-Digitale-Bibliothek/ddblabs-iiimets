@@ -120,6 +120,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
         if Path(cwd, 'cache', 'ids_of_generated_mets.txt').exists():
             alreadygeneratedids = [line.rstrip('\n') for line in open(Path(cwd, 'cache', 'ids_of_generated_mets.txt'))]
         else:
+            Path(cwd, 'cache', 'ids_of_generated_mets.txt').touch()
             logger.info("")
             alreadygeneratedids = []
     else:

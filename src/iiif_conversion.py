@@ -715,10 +715,10 @@ def generateMETS(metadata, logger, cwd, metsfolder):
     else:
         with open(Path(metsfolder, metadata['id'] + ".xml"), "w", encoding="utf8") as f:
             f.write(xmltemplate)
+            logger.info(f"{metadata['id']}.xml erfolgreich erstellt")
         # log which IDs have already been generated as METS
         with open(Path(cwd, 'ids_of_generated_mets.txt'), 'a', encoding='utf8') as f:
             f.write(metadata['id'] + "\n")
-        # logger.info(f"{metadata['id']}.xml erfolgreich erstellt")
 
 def setup_requests() -> requests.Session:
     """Sets up a requests session to automatically retry on errors
@@ -836,7 +836,7 @@ def getNewspaperData(id, session, newspaper):
 
 def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder):
     # Daten laden
-    logger.debug(f"Generating METS for {manifesturl}")
+
     try:
         jsondata = json.loads(session.get(manifesturl).text)
     except:
@@ -869,7 +869,7 @@ def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, 
             metadata[e['label'][0]['@value']] = e['value']
 
     if metadata['id'] in alreadygeneratedids:
-        # logger.info(f"Skip conversion of previously generated METS file for {metadata['id']}")
+        logger.info(f"Skip conversion of previously generated METS file for {metadata['id']}")
         pass
     else:
         if not re.search(r'\s##\s', metadata['Titel']):
