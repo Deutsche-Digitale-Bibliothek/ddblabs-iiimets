@@ -2,7 +2,6 @@ from src.iiif_harvesting import getNewspaperManifests
 from src.iiif_conversion import parseMetadata, setup_requests
 from src.download_ocrxml import downloadhOCR, runXSLonFolder
 from pathlib import Path
-import subprocess
 import pickle
 import requests
 from progress.bar import ChargingBar
@@ -101,7 +100,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
     '''
     Übergibt die URLs der IIIF Manifeste und andere zuvor gesammelte Variablen der
     '''
-    print(f"Generating METS Files with {threads} Threads.")
+    logger.debug(f"Generating METS Files with {threads} Threads.")
 
     # Inbfos aus dem Cache laden
     if caching == True:
@@ -140,12 +139,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
 
 if __name__ == '__main__':
     cwd = Path.cwd()
-    try:
-        saxonpath = subprocess.check_output(["which", "saxon"])
-    except:
-        sys.exit('no saxon')
-    else:
-        saxonpath = str(saxonpath.splitlines()[0], 'utf-8')
+    saxonpath = 'java -jar saxon-he-10.6.jar'
     # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
 
     url, file, cache, update = parseargs()

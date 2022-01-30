@@ -713,7 +713,6 @@ def generateMETS(metadata, logger, cwd, metsfolder):
         logger.warning(f"Fehler beim parsen des erstellen XML: {e}")
         return
     else:
-
         with open(Path(metsfolder, metadata['id'] + ".xml"), "w", encoding="utf8") as f:
             f.write(xmltemplate)
         # log which IDs have already been generated as METS
@@ -837,7 +836,7 @@ def getNewspaperData(id, session, newspaper):
 
 def parseMetadata(manifesturl, session, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder):
     # Daten laden
-    # logger.debug(manifesturl)
+    logger.debug(f"Generating METS for {manifesturl}")
     try:
         jsondata = json.loads(session.get(manifesturl).text)
     except:
