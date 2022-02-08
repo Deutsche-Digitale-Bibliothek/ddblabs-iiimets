@@ -195,4 +195,5 @@ if __name__ == '__main__':
     shutil.rmtree(hocrfolder)
     shutil.rmtree(altofolder)
     shutil.rmtree(metsfolder)
-
+    shutil.rmtree(Path(cwd, '_OCR', date))
+    logger.info('Vorgang abgeschlossen')

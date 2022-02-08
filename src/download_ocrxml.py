@@ -87,13 +87,14 @@ def downloadhOCR(metsfolder, hocrfolder):
     logger.info(f"Starte Download von {len(alto_urls)} urls")
 
     main(alto_urls, hocrfolder)
-
+    logger.info(f"Download der hOCR Dateien erledigt.")
     # Change Links
     for f in files:
         with open(f, 'r+', encoding='utf8') as fl:
             cont = fl.read()
             cont = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+?)/(.+)"', r'\1_\2.xml"', cont)
             fl.write(cont)
+    logger.info(f"Anpassen der Links in der fileGroup FULLTEXT erfolgt.")
 
 def runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath):
 
