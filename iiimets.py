@@ -22,7 +22,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 def parseargs():
     urlregex = r"^(http|https)://((\S+):(\S+)@|.*)\.(com|de|org|edu|at|ch|fr|net|nrw).*$"
     parser = argparse.ArgumentParser(
-        description='A OAI-PMH Harvester using ListIdentifiers and GetRecord verbs.'
+        description='Convert IIIF Manifest URLs to METS/MODS, download hOCR and convert to ALTO.'
     )
 
     parser.add_argument('--url', dest='url', help='URL of IIIF Collection to harvest')
@@ -184,16 +184,16 @@ if __name__ == '__main__':
     # Cache lesen und Threading starten:
 
     start(newspaper_urls, cwd, metsfolder, 16, cache, update)
-    downloadhOCR(metsfolder, hocrfolder)
-    runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath)
-    # erstelle ZIPs
-    logger.info('Erstelle ZIP Dateien')
-    shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
     shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
+    downloadhOCR(metsfolder, hocrfolder)
+    shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
+    # runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath)
+    logger.info('Erstelle ZIP Dateien')
+    # shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
     # Cleanup
-    logger.info('Starte Cleanup')
-    shutil.rmtree(hocrfolder)
-    shutil.rmtree(altofolder)
-    shutil.rmtree(metsfolder)
-    shutil.rmtree(Path(cwd, '_OCR', date))
+    # logger.info('Starte Cleanup')
+    # shutil.rmtree(hocrfolder)
+    # shutil.rmtree(altofolder)
+    # shutil.rmtree(metsfolder)
+    # shutil.rmtree(Path(cwd, '_OCR', date))
     logger.info('Vorgang abgeschlossen')
