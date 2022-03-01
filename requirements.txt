@@ -15,6 +15,7 @@ ipython==7.31.0
 jedi==0.18.1
 jupyter-client==7.1.0
 jupyter-core==4.9.1
+requests-futures
 loguru==0.5.3
 lxml==4.7.1
 matplotlib-inline==0.1.3
