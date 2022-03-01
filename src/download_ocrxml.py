@@ -88,16 +88,16 @@ for f in files[:100]:
 
 logger.info(f"Starte Download von {len(alto_urls)} urls")
 
-with FuturesSession(max_workers=16) as session:
-    futures = [session.get(url) for url in alto_urls]
+with FuturesSession(max_workers=8) as session:
+    futures = [session.get(url, headers={'User-agent': 'iiimets'}) for url in alto_urls]
     for future in as_completed(futures):
         response = future.result()
         url = response.request.url
-        print(url)
         response.encoding = 'utf-8'
         data = response.text
         if response.status_code != 200:
-            logger.critical(f"Statuscode {response.status_code} bei {future}")
+            # print(response.headers)
+            logger.critical(f"Statuscode {response.status_code} bei {url}")
         else:
             filename = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+)/(.+)', r'\1_\2.xml', url)
             with open(os.path.join(outfolder, filename), "w", encoding="utf8") as of:
