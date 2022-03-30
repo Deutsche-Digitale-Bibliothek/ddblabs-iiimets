@@ -50,19 +50,14 @@ def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fnam
     '''
     Braucht entweder eine IIIF-Collection URL oder eine Liste mit URLs als Pickle Datei
     '''
-    if url is not None:
-        # URL übergeben
-        logger.info(f"Getting Newspaper URLs from {url}")
-        newspaper_urls = getNewspaperManifests(url, http, filter, cwd, logger)
+
+    if Path(cwd, fname).exists():
+        with open(Path(cwd, fname), 'rb') as f:
+            newspaper_urls = pickle.load(f)
+            logger.info("Loaded urls from pickled file")
     else:
-        # schauen ob gepicklete liste da ist
-        if Path(cwd, fname).exists():
-            with open(Path(cwd, fname), 'rb') as f:
-                newspaper_urls = pickle.load(f)
-                logger.info("Loaded urls from pickled file")
-        else:
-            logger.error(f"Keine Datei {Path(cwd, fname)} gefunden und keine IIIF-Collection URL übergeben.")
-            newspaper_urls = []
+        logger.error(f"Keine Datei {Path(cwd, fname)} gefunden und keine IIIF-Collection URL übergeben.")
+        newspaper_urls = []
 
     logger.info(f"{len(newspaper_urls)} Newspaper Issues")
     return newspaper_urls
@@ -158,7 +153,16 @@ if __name__ == '__main__':
 
     http = setup_requests()
     date = time.strftime("%Y-%m-%d")
-    newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
+    if file is None and url is None:
+        sys.exit("You need either an URL to an IIIF Collection or a the Path to a file containg links to IIIF Manifests")
+    elif file is not None:
+        if file.endswith('.txt'):
+            newspaper_urls = [line.rstrip('\n') for line in open(file)]
+        else:
+            newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
+    elif url is not None:
+        logger.info(f"Getting Newspaper URLs from {url}")
+        newspaper_urls = getNewspaperManifests(url, http, filter, cwd, logger)
 
     if len(newspaper_urls) == 0:
         sys.exit()

@@ -1,0 +1,3 @@
+https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10932837_00155_u001/manifest
+https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10932837_00501_u001/manifest
+https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb10932837_00897_u001/manifest

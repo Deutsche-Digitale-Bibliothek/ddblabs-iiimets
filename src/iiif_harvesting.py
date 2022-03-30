@@ -20,7 +20,7 @@ from pathlib import Path
 - return list with Manifest URLs
 '''
 
-def getIdentifier(url, session):
+def getIdentifier(url, session, logger):
 
     # Die Liste nutzen wir nur zum Anzeigen des Fortschritts.
     manifests = []
@@ -34,46 +34,50 @@ def getIdentifier(url, session):
                 d['name'] = i['label']
                 manifests.append(d)
             print(len(manifests))
+    try:
+        response = session.get(url,
+                                        verify=False,
+                                        timeout=(20, 80))
+    except Exception as e:
+        logger.error(f'The collection URL is not reachable: {e}')
+        sys.exit()
+    else:
+        print(f'total number of Manifests: {response.json()["total"]}')
 
-    response = session.get(url,
-                                    verify=False,
-                                    timeout=(20, 80))
-    print(f'total number of Manifests: {response.json()["total"]}')
-
-    # Jetzt kommt die eigentliche Schleife: Solange wir da nicht per break rausgehen, läuft die.
-    # Immer mit neuer URL
-    while True:
-        # time.sleep(0.5)
-        # Verbindungsversuch inkl. Errorhandling
-        try:
-            print(url)
-            response = session.get(url,
-                                    verify=False,
-                                    timeout=(20, 80))
-        except Exception as e:
-            print(f'{url} hat nicht geklappt: {e}')
-            break
-        else:
-            if response.status_code == 404:
-                if input != "":
-                    sys.exit()
-                else:
-                    sys.exit()
+        # Jetzt kommt die eigentliche Schleife: Solange wir da nicht per break rausgehen, läuft die.
+        # Immer mit neuer URL
+        while True:
+            # time.sleep(0.5)
+            # Verbindungsversuch inkl. Errorhandling
+            try:
+                print(url)
+                response = session.get(url,
+                                        verify=False,
+                                        timeout=(20, 80))
+            except Exception as e:
+                logger.error(f'The collection URL is not reachable: {e}')
+                break
             else:
-                getManifestURLs(response)
-                try:
-                    # schauen, ob es noch einen Token gibt oder ob wir aus der Schleife rausmüssen:
-                    url = response.json()["next"]
-                    # if len(manifests) > 300:
-                    #     break
-                except:
-                    # wir sind fertig und gehen per break aus dem while-Loop raus.
-                    print(f"Identifier Harvesting beendet. Insgesamt {len(manifests)} IDs bekommen.")
-                    break
-    return manifests
+                if response.status_code == 404:
+                    if input != "":
+                        sys.exit()
+                    else:
+                        sys.exit()
+                else:
+                    getManifestURLs(response)
+                    try:
+                        # schauen, ob es noch einen Token gibt oder ob wir aus der Schleife rausmüssen:
+                        url = response.json()["next"]
+                        # if len(manifests) > 300:
+                        #     break
+                    except:
+                        # wir sind fertig und gehen per break aus dem while-Loop raus.
+                        print(f"Identifier Harvesting beendet. Insgesamt {len(manifests)} IDs bekommen.")
+                        break
+        return manifests
 
 def getNewspaperManifests(url, session, filter: str, cwd, logger):
-    manifests = getIdentifier(url, session)
+    manifests = getIdentifier(url, session, logger)
     df = pd.DataFrame.from_records(manifests)
     df.to_pickle('allmanifests.pkl')
     # newspaper_urls = df.query('name.str.contains("##")', engine="python")['url'].to_list()
