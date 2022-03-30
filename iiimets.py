@@ -1,6 +1,6 @@
 from src.iiif_harvesting import getNewspaperManifests
 from src.iiif_conversion import parseMetadata, setup_requests
-from src.download_ocrxml import downloadhOCR, runXSLonFolder
+# from src.download_ocrxml import downloadhOCR, runXSLonFolder
 from pathlib import Path
 import pickle
 import requests
@@ -181,14 +181,18 @@ if __name__ == '__main__':
         pass
     else:
         altofolder.mkdir()
+
     # Cache lesen und Threading starten:
 
     start(newspaper_urls, cwd, metsfolder, 16, cache, update)
+
+    # erstellte METS Dateien zippen:
+
     shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
-    downloadhOCR(metsfolder, hocrfolder)
-    shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
+    # downloadhOCR(metsfolder, hocrfolder)
+    # shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
     # runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath)
-    logger.info('Erstelle ZIP Dateien')
+    # logger.info('Erstelle ZIP Dateien')
     # shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
     # Cleanup
     # logger.info('Starte Cleanup')
