@@ -12,3 +12,5 @@ ids_of_generated_mets.txt
 cache/newspaperdata.pkl
 nohup.out
 custom/
+misc/hOCR2ALTO_saxonc.py
+misc/bsb_newspapers*
