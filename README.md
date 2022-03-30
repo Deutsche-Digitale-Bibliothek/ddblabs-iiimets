@@ -17,7 +17,7 @@ Wenn die URL einer IIIF-Collection übergeben wird und die Update Funktionalitä
 ## Benutzung
 
 ```
-python3 iiimets.py --file=/home/cloud/storage/iiimets/misc/bsb_newspapers_01.pkl --no-update
+python3 iiimets.py --file=misc/bsb_newspapers_01.pkl --no-update
 ```
 
 (`--no-update` um alle Daten neu zu ziehen, nicht bereits gezogene zu überspringen)
