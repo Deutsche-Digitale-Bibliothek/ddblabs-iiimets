@@ -12,7 +12,7 @@ Dieses Script erzeugt aus einer Liste von URLs zu IIIF-Manifesten zu Zeitungsaus
 
 ### Update-Funktionalität 
 
-Wenn die URL einer IIIF-Collection übergeben wird und die Update Funktionalität nicht deaktiviert wird (per `--no-update) werden diejenigen Manifeste übersprungen, für die schon einmal METS/MODS Dateien erstellt wurden.
+Wenn die URL einer IIIF-Collection übergeben wird und die Update Funktionalität nicht deaktiviert wird (per `--no-update`) werden diejenigen Manifeste übersprungen, für die schon einmal METS/MODS Dateien erstellt wurden.
 
 ## Benutzung
 

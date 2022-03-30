@@ -51,15 +51,17 @@ def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fnam
     Braucht entweder eine IIIF-Collection URL oder eine Liste mit URLs als Pickle Datei
     '''
     if url is not None:
-        logger.info(f"Getting Newspaper URLs from {fname}")
+        # URL übergeben
+        logger.info(f"Getting Newspaper URLs from {url}")
         newspaper_urls = getNewspaperManifests(url, http, filter, cwd, logger)
     else:
-        if Path(cwd, 'cache', fname).exists():
-            with open(Path(cwd, 'cache', fname), 'rb') as f:
+        # schauen ob gepicklete liste da ist
+        if Path(cwd, fname).exists():
+            with open(Path(cwd, fname), 'rb') as f:
                 newspaper_urls = pickle.load(f)
                 logger.info("Loaded urls from pickled file")
         else:
-            logger.error(f"Keine Datei {Path(cwd, 'cache', fname)} gefunden und keine IIIF-Collection URL übergeben.")
+            logger.error(f"Keine Datei {Path(cwd, fname)} gefunden und keine IIIF-Collection URL übergeben.")
             newspaper_urls = []
 
     logger.info(f"{len(newspaper_urls)} Newspaper Issues")
@@ -162,6 +164,18 @@ if __name__ == '__main__':
         sys.exit()
 
     # Folder Creation
+
+    metsfolder_main = Path(cwd, '_METS')
+    if metsfolder_main.exists():
+        pass
+    else:
+        metsfolder_main.mkdir()
+
+    ocrfolder_main = Path(cwd, '_OCR')
+    if ocrfolder_main.exists():
+        pass
+    else:
+        ocrfolder_main.mkdir()
 
     metsfolder = Path(cwd, '_METS', date)
     if metsfolder.exists():

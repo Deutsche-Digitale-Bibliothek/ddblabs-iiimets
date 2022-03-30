@@ -69,8 +69,8 @@ def setup_requests() -> requests.Session:
 
 START_TIME = default_timer()
 
-metsfolder = "/home/cloud/storage/iiimets/_METS/2022-02-28"
-outfolder = "/home/cloud/storage/iiimets/_OCR/2022-02-28/hOCR"
+metsfolder = "./_METS/2022-02-28"
+outfolder = "./_OCR/2022-02-28/hOCR"
 namespaces = {"alto": "http://www.loc.gov/standards/alto/ns-v3#", "xlink": "http://www.w3.org/1999/xlink",
             "mets": "http://www.loc.gov/METS/", "mods": "http://www.loc.gov/mods/v3"}
 
