@@ -13,7 +13,7 @@ def transformHOCR(urls, folder, logger):
         return
     with saxonc.PySaxonProcessor(license=False) as proc:
         xsltproc = proc.new_xslt_processor()
-        xsltproc.compile_stylesheet(stylesheet_file="/home/cloud/baytsify/xslt/hOCR2ALTO.xsl")
+        xsltproc.compile_stylesheet(stylesheet_file="xslt/hOCR2ALTO.xsl")
 
         for u in urls:
             logger.debug("Transform hOCR for %s", u)
