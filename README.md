@@ -18,7 +18,9 @@ Wenn die URL einer IIIF-Collection übergeben wird und die Update Funktionalitä
 
 Benutzung einer [venv](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/) ist zu empfehlen.
 
-Das Paket und seine Abhängigkeiten installiert man per
+Braucht zur Laufzeit das System-Paket `openjdk-8-jre-headless`.
+
+Das Python-Paket und seine Abhängigkeiten installiert man per
 
 
     pip install iiimets
@@ -29,5 +31,5 @@ Das Paket und seine Abhängigkeiten installiert man per
 
     iiimets --file=misc/bsb_newspapers_01.pkl --no-update --no-cache
 
-
 (`--no-update` um alle Daten neu zu ziehen, nicht bereits gezogene zu überspringen)
+
