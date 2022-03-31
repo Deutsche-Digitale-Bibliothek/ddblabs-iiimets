@@ -135,7 +135,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
             pickle.dump(newspaper, f)
             logger.info(f"Wrote {len(newspaper)} newspaperdata to pickled file")
 
-if __name__ == '__main__':
+def main():
     cwd = Path.cwd()
     saxonpath = 'java -jar saxon-he-10.6.jar'
     # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
@@ -219,3 +219,6 @@ if __name__ == '__main__':
     # shutil.rmtree(metsfolder)
     # shutil.rmtree(Path(cwd, '_OCR', date))
     logger.info('Vorgang abgeschlossen')
+
+if __name__ == '__main__':
+    main()
