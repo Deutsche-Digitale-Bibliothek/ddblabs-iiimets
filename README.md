@@ -14,10 +14,20 @@ Dieses Script erzeugt aus einer Liste von URLs zu IIIF-Manifesten zu Zeitungsaus
 
 Wenn die URL einer IIIF-Collection übergeben wird und die Update Funktionalität nicht deaktiviert wird (per `--no-update`) werden diejenigen Manifeste übersprungen, für die schon einmal METS/MODS Dateien erstellt wurden.
 
+## Installation
+
+Benutzung einer [venv](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/) ist zu empfehlen.
+
+Das Paket und seine Abhängigkeiten installiert man per
+
+
+    pip install iiimets
+
+
 ## Benutzung
 
-```
-python3 iiimets.py --file=misc/bsb_newspapers_01.pkl --no-update
-```
+
+    iiimets --file=misc/bsb_newspapers_01.pkl --no-update --no-cache
+
 
 (`--no-update` um alle Daten neu zu ziehen, nicht bereits gezogene zu überspringen)
