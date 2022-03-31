@@ -6,24 +6,23 @@ TODO: Konversion der hOCR Dateien in ALTO mit Saxon
 
 '''
 
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
-import requests
-import asyncio
+import sys
+import time
+import os
+import re
+from timeit import default_timer
+from pathlib import Path
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
-from requests_futures.sessions import FuturesSession
-from loguru import logger
-import os
 import subprocess
-from timeit import default_timer
+import asyncio
+import requests
+from requests.adapters import HTTPAdapter
+from requests_futures.sessions import FuturesSession
+from urllib3.util.retry import Retry
+from loguru import logger
 import lxml.etree as ET
-import sys
-import time
-import re
-from pathlib import Path
-
 
 
 def runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath):

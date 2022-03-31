@@ -7,18 +7,18 @@
 # @Date   : 17.12.2021, 13:01:16
 
 from datetime import datetime
-from lxml import etree
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 import json
-from loguru import logger
 from pathlib import Path
 import re
-import requests
-import time
 import sys
-import pickle
+import time
 from operator import itemgetter
+import pickle
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+from lxml import etree
+from loguru import logger
 
 def generateMETS(metadata, logger, cwd, metsfolder):
 

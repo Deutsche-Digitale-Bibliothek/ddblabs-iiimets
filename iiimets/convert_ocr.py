@@ -1,8 +1,8 @@
 import sys
-from urllib import request
-import requests
 import re
 import os
+from urllib import request
+import requests
 
 def transformHOCR(urls, folder, logger):
     logger.info("Loading Saxon")

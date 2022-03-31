@@ -6,11 +6,11 @@
 # @Link   :
 # @Date   : 17.12.2021, 13:01:27
 from datetime import datetime
-import pandas as pd
 import sys
 import pickle
 import time
 from pathlib import Path
+import pandas as pd
 
 '''
 - Get first (https://api.digitale-sammlungen.de/iiif/presentation/v2/collection/top?cursor=initial)

@@ -1,22 +1,24 @@
-from src.iiif_harvesting import getNewspaperManifests
-from src.iiif_conversion import parseMetadata, setup_requests
-# from src.download_ocrxml import downloadhOCR, runXSLonFolder
+import sys
 from pathlib import Path
 import pickle
-import requests
-from progress.bar import ChargingBar
-import urllib3
+from concurrent.futures import ThreadPoolExecutor
 import re
 import time
 from timeit import default_timer
-import sys
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 import asyncio
 import argparse
 import shutil
-from concurrent.futures import ThreadPoolExecutor
+import requests
+from requests.adapters import HTTPAdapter
+from progress.bar import ChargingBar
+import urllib3
+from urllib3.util.retry import Retry
 from loguru import logger
+
+from .iiif_harvesting import getNewspaperManifests
+from .iiif_conversion import parseMetadata, setup_requests
+# from .download_ocrxml import downloadhOCR, runXSLonFolder
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def parseargs():
