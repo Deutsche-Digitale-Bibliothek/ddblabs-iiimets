@@ -1,8 +1,11 @@
 import sys
 import re
 import os
+from pkg_resources import resource_filename
 from urllib import request
 import requests
+
+HOCR2ALTO = resource_filename(__name__, 'res/xslt/hOCR2ALTO.xsl')
 
 def transformHOCR(urls, folder, logger):
     logger.info("Loading Saxon")
@@ -13,7 +16,7 @@ def transformHOCR(urls, folder, logger):
         return
     with saxonc.PySaxonProcessor(license=False) as proc:
         xsltproc = proc.new_xslt_processor()
-        xsltproc.compile_stylesheet(stylesheet_file="xslt/hOCR2ALTO.xsl")
+        xsltproc.compile_stylesheet(stylesheet_file=HOCR2ALTO)
 
         for u in urls:
             logger.debug("Transform hOCR for %s", u)

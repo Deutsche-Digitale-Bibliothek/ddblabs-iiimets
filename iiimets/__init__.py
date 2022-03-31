@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from pkg_resources import resource_filename
 import pickle
 from concurrent.futures import ThreadPoolExecutor
 import re
@@ -139,7 +140,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
 
 def main():
     cwd = Path.cwd()
-    saxonpath = 'java -jar saxon-he-10.6.jar'
+    saxonpath = 'java -jar ' + resource_filename(__name__, 'res/saxon-he-10.6.jar')
     # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
 
     url, file, cache, update = parseargs()

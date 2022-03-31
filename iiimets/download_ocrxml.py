@@ -12,6 +12,7 @@ import os
 import re
 from timeit import default_timer
 from pathlib import Path
+from pkg_resources import resource_filename
 from threading import Lock
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import as_completed
@@ -24,11 +25,11 @@ from urllib3.util.retry import Retry
 from loguru import logger
 import lxml.etree as ET
 
+HOCR2ALTO = resource_filename(__name__, 'res/xslt/hOCR2ALTO.xsl')
 
 def runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath):
 
-    xsl = Path(cwd, 'src', 'xslt', 'hOCR2ALTO.xsl')
-    subprocessargs = f"{saxonpath} -s:{hocrfolder} -o:{altofolder} -xsl:{xsl}".split(' ')
+    subprocessargs = f"{saxonpath} -s:{hocrfolder} -o:{altofolder} -xsl:{HOCR2ALTO}".split(' ')
     logger.info(f"Starte Saxon XSLT Processing")
     try:
         transformationoutput = subprocess.check_output(subprocessargs, stderr=subprocess.STDOUT)
