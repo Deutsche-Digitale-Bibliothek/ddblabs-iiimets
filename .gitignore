@@ -1,9 +1,13 @@
 _METS/*
 _OCR/*
 __pycache__/*
+build/*
+dist/*
+*.egg-info
 .DS_Store
 .vscode/*
 *.log
+*~
 jet_err_*
 src/__pycache__/
 cache/ids_of_generated_mets.txt
