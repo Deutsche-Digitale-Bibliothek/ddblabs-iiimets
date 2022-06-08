@@ -65,7 +65,6 @@ def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fnam
     logger.info(f"{len(newspaper_urls)} Newspaper Issues")
     return newspaper_urls
 
-
 async def get_data_asynchronous(urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, threads):
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
@@ -121,7 +120,7 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
             alreadygeneratedids = [line.rstrip('\n') for line in open(Path(cwd, 'cache', 'ids_of_generated_mets.txt'))]
         else:
             Path(cwd, 'cache', 'ids_of_generated_mets.txt').touch()
-            logger.info("")
+            logger.info(f"Created empty list of generated METS IDs in {Path(cwd, 'cache', 'ids_of_generated_mets.txt')}")
             alreadygeneratedids = []
     else:
         alreadygeneratedids = []
@@ -139,12 +138,11 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
             logger.info(f"Wrote {len(newspaper)} newspaperdata to pickled file")
 
 def main():
-    cwd = Path.cwd()
+    cwd = Path.cwd().parent
     saxonpath = 'java -jar ' + resource_filename(__name__, 'res/saxon-he-10.6.jar')
-    # IIIF Manifest-URLs bestimmen: Entweder Abruf über die Collection oder bereits gecachte aus einer gepickelten Liste lesen.
-
+    # Parse Arguments
     url, file, cache, update = parseargs()
-    # Log initialisieren
+    # Initialize Logger
     logname = Path(cwd, time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log")
     PARAMETER = logger.level("PARAMETER", no=38, color="<blue>")
     logger.add(
@@ -156,22 +154,29 @@ def main():
 
     http = setup_requests()
     date = time.strftime("%Y-%m-%d")
+    # IIIF Manifest-URLs
+    # Either harvest a Collection (WIP) or read Manifest URLs from list (pickled or text file)
     if file is None and url is None:
-        sys.exit("You need either an URL to an IIIF Collection or a the Path to a file containg links to IIIF Manifests")
+        sys.exit("Error: You either need to pass an URL to an IIIF Collection or the Path to a file containg links to IIIF Manifests")
     elif file is not None:
+        # when we ware passed the Path to a file containing IIIF Manifest URLs
         if file.endswith('.txt'):
+            # if it’s a text file
             newspaper_urls = [line.rstrip('\n') for line in open(file)]
-        else:
+        elif file.endswith('.pkl'):
+            # if it ends with pkl we assume it’s pickled
             newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
+        else:
+            sys.exit("Can’t use the input file.")
     elif url is not None:
         logger.info(f"Getting Newspaper URLs from {url}")
         newspaper_urls = getNewspaperManifests(url, http, filter, cwd, logger)
 
     if len(newspaper_urls) == 0:
         sys.exit()
-
+    # ----------------------------------------------------
     # Folder Creation
-
+    # ----------------------------------------------------
     metsfolder_main = Path(cwd, '_METS')
     if metsfolder_main.exists():
         pass
@@ -202,14 +207,14 @@ def main():
         pass
     else:
         altofolder.mkdir()
-
-    # Cache lesen und Threading starten:
-
+    # ----------------------------------------------------
+    # Start:
+    # ----------------------------------------------------
     start(newspaper_urls, cwd, metsfolder, 16, cache, update)
 
-    # erstellte METS Dateien zippen:
-
-    shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
+    # Compress generated METS files:
+    # TODO The following steps need to be toggled by commandline options
+    # shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
     # downloadhOCR(metsfolder, hocrfolder)
     # shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
     # runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath)
@@ -221,7 +226,7 @@ def main():
     # shutil.rmtree(altofolder)
     # shutil.rmtree(metsfolder)
     # shutil.rmtree(Path(cwd, '_OCR', date))
-    logger.info('Vorgang abgeschlossen')
+    logger.info('Process completed')
 
 if __name__ == '__main__':
     main()
