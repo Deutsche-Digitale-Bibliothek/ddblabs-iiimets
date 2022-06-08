@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 import re
 import sys
-sys.path.append("/res")
 import time
 from operator import itemgetter
 import pickle
@@ -20,7 +19,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from lxml import etree
 from loguru import logger
-from res import templates
+from .templates import METS
 
 def generateMETS(metadata, logger, cwd, metsfolder):
 
