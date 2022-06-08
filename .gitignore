@@ -19,3 +19,4 @@ misc/bsb_newspapers*
 misc/hOCR2ALTO_saxonc.py
 nohup.out
 src/__pycache__/
+iiimets/__pycache__/*

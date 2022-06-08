@@ -19,8 +19,9 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from lxml import etree
 from loguru import logger
+from pkg_resources import resource_filename
 from .templates import METS
-
+LANGUAGES_JSON = resource_filename(__name__, 'res/languages.json')
 def generateMETS(metadata, logger, cwd, metsfolder):
 
     def flgrp_default(images):
@@ -97,7 +98,7 @@ def generateMETS(metadata, logger, cwd, metsfolder):
     isodate = re.sub(r'(\d{4}-\d{2}-\d{2})(.+)', r'\1', metadata['dateIssued'])
     physlocation = re.sub(r'(.+)\s--\s(.+)', r'\1', metadata['standort'])
     shelfloc = re.sub(r'(.+)\s--\s(.+)', r'\2', metadata['standort'])
-    with open('res/languages.json') as langjson:
+    with open(LANGUAGES_JSON) as langjson:
         language_dict = json.load(langjson)
     sprache = language_dict[metadata['sprache']]
     dvlicense = metadata['license'].replace('http://creativecommons.org/licenses/by-nc-sa/4.0/deed.de', 'https://creativecommons.org/licenses/by-nc-sa/4.0/')
