@@ -287,7 +287,6 @@ def getNewspaperData(id, session, newspaper):
         jsonmetadata = json.loads(session.get(newspaper_manifest_url).text)
         metadata[id] = id
         for e in jsonmetadata['metadata']:
-            # pprint.pprint(e)
             if type(e['value']) == list:
                 metadata[e['label'][0]['@value']] = e['value'][0]['@value']
             else:
@@ -322,7 +321,6 @@ def getNewspaperData(id, session, newspaper):
 
     if len(newspaper) == 0:
         # das passiert nur bei der allerersten Issue
-        # print("First Issue!")
         zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel = gatherinfos()
     else:
         # schauen, ob wir zu der Zeitung die Metadaten schon abgerufen haben
@@ -330,10 +328,8 @@ def getNewspaperData(id, session, newspaper):
         try:
             pos = list(map(itemgetter('id'), newspaper)).index(id)
         except:
-            # print("Rufe die Infos ab über das Manifest der Zeitung und die ZDB")
             zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel = gatherinfos()
         else:
-            # print(f"Cache für {id}")
             zdbid_digital = newspaper[pos]['metadata']['zdbid_digital']
             sprache = newspaper[pos]['metadata']['sprache']
             standort = newspaper[pos]['metadata']['standort']
