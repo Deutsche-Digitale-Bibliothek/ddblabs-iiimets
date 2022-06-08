@@ -16,7 +16,7 @@ import urllib3
 from urllib3.util.retry import Retry
 from loguru import logger
 
-from .iiif_harvesting import getNewspaperManifests
+from .iiif_harvesting import getListOfManifests
 from .iiif_conversion import parseMetadata, setup_requests
 # from .download_ocrxml import downloadhOCR, runXSLonFolder
 
@@ -30,6 +30,7 @@ def parseargs():
 
     parser.add_argument('--url', dest='url', help='URL of IIIF Collection to harvest')
     parser.add_argument('--file', dest='file', help='Filename to pickeld URL list')
+    parser.add_argument('--filter', dest='filter', help='String to filter Manifests by')
     parser.add_argument('--no-cache', required=False, dest='cache', action='store_false', help='If set, no cache is used')
     parser.add_argument('--no-update', required=False, dest='update', action='store_false', help='If set, update functionality is disabled')
 
@@ -40,6 +41,7 @@ def parseargs():
     else:
         url = args['url']
         file = args['file']
+        filter = args['filter']
         cache = args['cache']
         update = args['update']
         if url is not None:
@@ -47,12 +49,9 @@ def parseargs():
                 url = url
             else:
                 parser.error('URL is not valid.')
-        return url, file, cache, update
+        return url, file, cache, update, filter
 
-def loadManifestURLsFromPickle(url: str, cwd: Path, http: requests.session, fname: str, filter, logger) -> list:
-    '''
-    Braucht entweder eine IIIF-Collection URL oder eine Liste mit URLs als Pickle Datei
-    '''
+def loadManifestURLsFromPickle(cwd: Path, fname: str, logger) -> list:
 
     if Path(cwd, fname).exists():
         with open(Path(cwd, fname), 'rb') as f:
@@ -138,10 +137,10 @@ def start(newspaper_urls: list, cwd: Path, metsfolder: Path, threads: int, cachi
             logger.info(f"Wrote {len(newspaper)} newspaperdata to pickled file")
 
 def main():
-    cwd = Path.cwd().parent
+    cwd = Path.cwd()
     saxonpath = 'java -jar ' + resource_filename(__name__, 'res/saxon-he-10.6.jar')
     # Parse Arguments
-    url, file, cache, update = parseargs()
+    url, file, cache, update, filter = parseargs()
     # Initialize Logger
     logname = Path(cwd, time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log")
     PARAMETER = logger.level("PARAMETER", no=38, color="<blue>")
@@ -162,17 +161,17 @@ def main():
         # when we ware passed the Path to a file containing IIIF Manifest URLs
         if file.endswith('.txt'):
             # if it’s a text file
-            newspaper_urls = [line.rstrip('\n') for line in open(file)]
+            manifest_urls = [line.rstrip('\n') for line in open(file)]
         elif file.endswith('.pkl'):
             # if it ends with pkl we assume it’s pickled
-            newspaper_urls = loadManifestURLsFromPickle(url, cwd, http, file, '##', logger)
+            manifest_urls = loadManifestURLsFromPickle(cwd, file, logger)
         else:
             sys.exit("Can’t use the input file.")
     elif url is not None:
-        logger.info(f"Getting Newspaper URLs from {url}")
-        newspaper_urls = getNewspaperManifests(url, http, filter, cwd, logger)
+        logger.info(f"Getting Manifest URLs from {url}")
+        manifest_urls = getListOfManifests(url, http, filter, cwd, logger)
 
-    if len(newspaper_urls) == 0:
+    if len(manifest_urls) == 0:
         sys.exit()
     # ----------------------------------------------------
     # Folder Creation
@@ -210,7 +209,7 @@ def main():
     # ----------------------------------------------------
     # Start:
     # ----------------------------------------------------
-    start(newspaper_urls, cwd, metsfolder, 16, cache, update)
+    start(manifest_urls, cwd, metsfolder, 16, cache, update)
 
     # Compress generated METS files:
     # TODO The following steps need to be toggled by commandline options
