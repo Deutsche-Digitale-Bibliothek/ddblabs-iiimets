@@ -13,7 +13,7 @@ with codecs.open('README.md', encoding='utf-8') as f:
 
 setup(
     name='iiimets',
-    version='0.1',
+    version='0.2',
     description='IIIF to METS/MODS conversion script',
     long_description=README,
     long_description_content_type='text/markdown',
