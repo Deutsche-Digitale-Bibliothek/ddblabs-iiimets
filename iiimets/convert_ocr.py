@@ -1,11 +1,13 @@
-import sys
-import re
 import os
-from pkg_resources import resource_filename
+import re
+import sys
 from urllib import request
-import requests
 
-HOCR2ALTO = resource_filename(__name__, 'res/xslt/hOCR2ALTO.xsl')
+import requests
+from pkg_resources import resource_filename
+
+HOCR2ALTO = resource_filename(__name__, "res/xslt/hOCR2ALTO.xsl")
+
 
 def transformHOCR(urls, folder, logger):
     logger.info("Loading Saxon")
@@ -20,14 +22,16 @@ def transformHOCR(urls, folder, logger):
 
         for u in urls:
             logger.debug("Transform hOCR for %s", u)
-            filename = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+)/(.+)', r'\1_\2.xml', u)
+            filename = re.sub(
+                r"https://api.digitale-sammlungen.de/ocr/(.+)/(.+)", r"\1_\2.xml", u
+            )
             try:
                 r = requests.get(u)
             except:
                 logger.error(f"Konnte {u} nicht abrufen")
                 pass
             else:
-                r.encoding = 'utf-8'
+                r.encoding = "utf-8"
                 try:
                     document = proc.parse_xml(xml_text=r.text)
                     xsltproc.set_source(xdm_node=document)
@@ -36,10 +40,14 @@ def transformHOCR(urls, folder, logger):
                     logger.error(f"Konnte {u} nicht transformieren")
                     pass
                 else:
-                    with open(os.path.join(folder, filename), 'w') as f:
+                    with open(os.path.join(folder, filename), "w") as f:
                         f.write(result)
                         logger.debug(f"Wrote {filename}")
 
-if __name__ == '__main__':
-    urls = ['https://api.digitale-sammlungen.de/ocr/bsb00063967/740', 'https://api.digitale-sammlungen.de/ocr/bsb00063967/739']
-    transformHOCR(urls, 'OCR')
+
+if __name__ == "__main__":
+    urls = [
+        "https://api.digitale-sammlungen.de/ocr/bsb00063967/740",
+        "https://api.digitale-sammlungen.de/ocr/bsb00063967/739",
+    ]
+    transformHOCR(urls, "OCR")

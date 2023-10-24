@@ -1,11 +1,10 @@
 class METS:
-
     def __init__(self, itemid):
-      self.itemid = itemid
-      self.time = time
+        self.itemid = itemid
+        self.time = time
 
     def returnXML(self):
-        return f'''
+        return f"""
         <mets:mets OBJID="{itemid}" TYPE="newspaper" xmlns:mets="http://www.loc.gov/METS/" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-7.xsd http://www.loc.gov/METS/ http://www.loc.gov/standards/mets/mets.xsd">
         <mets:metsHdr LASTMODDATE="{time.strftime("%Y-%m-%dT%H:%M:%SZ")}">
         </mets:metsHdr>
@@ -110,4 +109,4 @@ class METS:
                     {structLink(metadata['images'])}
             </mets:structLink>
         </mets:mets>
-            '''
+            """
