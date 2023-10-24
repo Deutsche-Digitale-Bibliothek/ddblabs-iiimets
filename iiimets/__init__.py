@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import pickle
 import re
-import shutil
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -13,7 +12,6 @@ import requests
 import urllib3
 from loguru import logger
 from pkg_resources import resource_filename
-from progress.bar import ChargingBar
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
@@ -70,13 +68,13 @@ def parseargs():
 
 
 def loadManifestURLsFromPickle(cwd: Path, fname: str, logger) -> list:
-    if Path(cwd, fname).exists():
-        with open(Path(cwd, fname), "rb") as f:
+    if Path(Path(__file__).parent.parent, fname).exists():
+        with open(Path(Path(__file__).parent.parent, fname), "rb") as f:
             newspaper_urls = pickle.load(f)
             logger.info("Loaded urls from pickled file")
     else:
         logger.error(
-            f"Keine Datei {Path(cwd, fname)} gefunden und keine IIIF-Collection URL übergeben."
+            f"Keine Datei {Path(Path(__file__).parent.parent, fname)} gefunden und keine IIIF-Collection URL übergeben."
         )
         newspaper_urls = []
 
@@ -85,7 +83,7 @@ def loadManifestURLsFromPickle(cwd: Path, fname: str, logger) -> list:
 
 
 async def get_data_asynchronous(
-    urls, newspaper, issues, alreadygeneratedids, logger, cwd, metsfolder, threads
+    urls, newspaper, issues, alreadygeneratedids, logger, metsfolder, threads
 ):
     with ThreadPoolExecutor(max_workers=threads) as executor:
         with requests.Session() as session:
@@ -111,7 +109,7 @@ async def get_data_asynchronous(
                         issues,
                         alreadygeneratedids,
                         logger,
-                        cwd,
+                        Path(__file__).parent.parent,
                         metsfolder,
                     ),  # Allows us to pass in multiple arguments to `parseMetadata`
                 )
@@ -140,8 +138,10 @@ def start(
 
     # Inbfos aus dem Cache laden
     if caching is True:
-        if Path(cwd, "cache", "newspaperdata.pkl").exists():
-            with open(Path(cwd, "cache", "newspaperdata.pkl"), "rb") as f:
+        if Path(Path(__file__).parent.parent, "cache", "newspaperdata.pkl").exists():
+            with open(
+                Path(Path(__file__).parent.parent, "cache", "newspaperdata.pkl"), "rb"
+            ) as f:
                 newspaper = pickle.load(f)
                 logger.info(f"Loaded {len(newspaper)} newspaperdata from pickled file")
         else:
@@ -153,15 +153,25 @@ def start(
     # sondern nur die zu den IDs die wir noch nicht haben
     if update is True:
         logger.info("Running as Update")
-        if Path(cwd, "cache", "ids_of_generated_mets.txt").exists():
+        if Path(
+            Path(__file__).parent.parent, "cache", "ids_of_generated_mets.txt"
+        ).exists():
             alreadygeneratedids = [
                 line.rstrip("\n")
-                for line in open(Path(cwd, "cache", "ids_of_generated_mets.txt"))
+                for line in open(
+                    Path(
+                        Path(__file__).parent.parent,
+                        "cache",
+                        "ids_of_generated_mets.txt",
+                    )
+                )
             ]
         else:
-            Path(cwd, "cache", "ids_of_generated_mets.txt").touch()
+            Path(
+                Path(__file__).parent.parent, "cache", "ids_of_generated_mets.txt"
+            ).touch()
             logger.info(
-                f"Created empty list of generated METS IDs in {Path(cwd, 'cache', 'ids_of_generated_mets.txt')}"
+                f"Created empty list of generated METS IDs in {Path(Path(__file__).parent.parent, 'cache', 'ids_of_generated_mets.txt')}"
             )
             alreadygeneratedids = []
     else:
@@ -178,7 +188,6 @@ def start(
             issues,
             alreadygeneratedids,
             logger,
-            cwd,
             metsfolder,
             threads,
         )
@@ -186,18 +195,24 @@ def start(
     loop.run_until_complete(future)
     # ----------------------------------------------------------------
     # Cleanup: Infos pickeln
-    with open(Path(cwd, "cache", "newspaperdata.pkl"), "wb") as f:
+    with open(
+        Path(Path(__file__).parent.parent, "cache", "newspaperdata.pkl"), "wb"
+    ) as f:
         pickle.dump(newspaper, f)
         logger.info(f"Wrote {len(newspaper)} newspaperdata to pickled file")
 
 
 def main():
-    cwd = Path.cwd()
     saxonpath = "java -jar " + resource_filename(__name__, "res/saxon-he-10.6.jar")
     # Parse Arguments
     url, file, cache, update, filter = parseargs()
     # Initialize Logger
-    logname = Path(cwd, time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log")
+    logname = Path(
+        Path(
+            Path(__file__).parent.parent,
+            time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log",
+        )
+    )
     PARAMETER = logger.level("PARAMETER", no=38, color="<blue>")
     logger.add(
         logname,
@@ -222,41 +237,45 @@ def main():
             manifest_urls = [line.rstrip("\n") for line in open(file)]
         elif file.endswith(".pkl"):
             # if it ends with pkl we assume it’s pickled
-            manifest_urls = loadManifestURLsFromPickle(cwd, file, logger)
+            manifest_urls = loadManifestURLsFromPickle(
+                Path(__file__).parent.parent, file, logger
+            )
         else:
             sys.exit("Can’t use the input file.")
     elif url is not None:
         logger.info(f"Getting Manifest URLs from {url}")
-        manifest_urls = getListOfManifests(url, http, filter, cwd, logger)
+        manifest_urls = getListOfManifests(
+            url + "?cursor=initial", http, filter, Path(__file__).parent.parent, logger
+        )
 
     if len(manifest_urls) == 0:
         sys.exit()
     # ----------------------------------------------------
     # Folder Creation
     # ----------------------------------------------------
-    metsfolder_main = Path(cwd, "_METS")
+    metsfolder_main = Path(Path(__file__).parent.parent, "_METS")
     if metsfolder_main.exists():
         pass
     else:
         metsfolder_main.mkdir()
 
-    ocrfolder_main = Path(cwd, "_OCR")
+    ocrfolder_main = Path(Path(__file__).parent.parent, "_OCR")
     if ocrfolder_main.exists():
         pass
     else:
         ocrfolder_main.mkdir()
 
-    metsfolder = Path(cwd, "_METS", date)
+    metsfolder = Path(Path(__file__).parent.parent, "_METS", date)
     if metsfolder.exists():
         pass
     else:
         metsfolder.mkdir()
 
-    hocrfolder = Path(cwd, "_OCR", date, "hOCR")
+    hocrfolder = Path(Path(__file__).parent.parent, "_OCR", date, "hOCR")
     if hocrfolder.exists():
         pass
     else:
-        Path(cwd, "_OCR", date).mkdir()
+        Path(Path(__file__).parent.parent, "_OCR", date).mkdir()
         hocrfolder.mkdir()
 
     altofolder = Path(hocrfolder.parent, "ALTO")
@@ -267,14 +286,14 @@ def main():
     # ----------------------------------------------------
     # Start:
     # ----------------------------------------------------
-    start(manifest_urls, cwd, metsfolder, 16, cache, update)
+    start(manifest_urls, Path(__file__).parent.parent, metsfolder, 16, cache, update)
 
     # Compress generated METS files:
     # TODO The following steps need to be toggled by commandline options
     # shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
     # downloadhOCR(metsfolder, hocrfolder)
     # shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
-    # runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath)
+    # runXSLonFolder(hocrfolder, altofolder, Path(__file__).parent.parent, saxonpath)
     # logger.info('Erstelle ZIP Dateien')
     # shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
     # Cleanup
@@ -282,7 +301,7 @@ def main():
     # shutil.rmtree(hocrfolder)
     # shutil.rmtree(altofolder)
     # shutil.rmtree(metsfolder)
-    # shutil.rmtree(Path(cwd, '_OCR', date))
+    # shutil.rmtree(Path(Path(__file__).parent.parent, '_OCR', date))
     logger.info("Process completed")
 
 

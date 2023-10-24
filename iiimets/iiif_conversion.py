@@ -7,16 +7,12 @@
 # @Date   : 17.12.2021, 13:01:16
 
 import json
-import pickle
 import re
-import sys
 import time
-from datetime import datetime
 from operator import itemgetter
 from pathlib import Path
 
 import requests
-from loguru import logger
 from lxml import etree
 from pkg_resources import resource_filename
 from requests.adapters import HTTPAdapter
@@ -279,10 +275,10 @@ def getNewspaperData(id, session, newspaper):
         root = etree.XML(response.content)
         namespaces = {"marc": "http://www.loc.gov/MARC21/slim"}
         zdbid_digital = root.findall(
-            f".//marc:datafield[@tag='776']/marc:subfield[@code='w']", namespaces
+            ".//marc:datafield[@tag='776']/marc:subfield[@code='w']", namespaces
         )
         newspapertitel = root.findall(
-            f".//marc:datafield[@tag='245']/marc:subfield[@code='a']", namespaces
+            ".//marc:datafield[@tag='245']/marc:subfield[@code='a']", namespaces
         )
 
         if not zdbid_digital:
@@ -305,7 +301,7 @@ def getNewspaperData(id, session, newspaper):
         jsonmetadata = json.loads(session.get(newspaper_manifest_url).text)
         metadata[id] = id
         for e in jsonmetadata["metadata"]:
-            if type(e["value"]) == list:
+            if isinstance(e["value"], list):
                 metadata[e["label"][0]["@value"]] = e["value"][0]["@value"]
             else:
                 metadata[e["label"][0]["@value"]] = e["value"]
@@ -313,13 +309,13 @@ def getNewspaperData(id, session, newspaper):
         zdbid_digital, newspapertitel = get_data_from_zdbsru(zdbid_print)
         try:
             sprache = metadata["Sprache"]
-        except:
+        except KeyError:
             sprache = "Nicht zu entscheiden"
         standort = metadata["Standort"]
         metadata["Newspapertitle"] = newspapertitel
         try:
             publisher = metadata["Von"]
-        except:
+        except KeyError:
             publisher = ""
         urn = re.sub(r"<.+?()>(.+)<\/a>", r"\2", metadata["URN"])
         # Newspaper Dict erstellen, damit wir beim nächsten mal nicht wieder alles parsen müssen
@@ -403,12 +399,12 @@ def parseMetadata(
     metsfolder,
 ):
     """
-    Load IIIF JSON Manifest and extract Metadata
+    Load IIIF JSON Manifest from URL, extract Metadata and generate METS XML.
     """
 
     try:
         jsondata = json.loads(session.get(manifesturl).text)
-    except:
+    except json.decoder.JSONDecodeError:
         logger.error(f"Failed to JSON Decode {manifesturl}")
         return
     jsonmetadata = jsondata["metadata"]
@@ -444,94 +440,61 @@ def parseMetadata(
             )
         else:
             metadata[e["label"][0]["@value"]] = e["value"]
-
-    if metadata["id"] in alreadygeneratedids:
-        logger.info(
-            f"Skip conversion of previously generated METS file for {metadata['id']}"
-        )
-        pass
+    try:
+        # FIXME den Key gibt es nicht?
+        metadata["id"]
+    except KeyError:
+        logger.error(f"Keine ID für {manifesturl} gefunden")
+        print(metadata)
+        return
     else:
-        if not re.search(r"\s##\s", metadata["Titel"]):
-            logger.warning(f"{manifesturl} wahrscheinlich keine Zeitung!")
-            return
-        # Erweiterte Infos über das Manifest der Zeitung auslesen
-        (
-            zdbid_print,
-            sprache,
-            standort,
-            publisher,
-            urn,
-            zdbid_digital,
-            newspapertitel,
-            newspaper,
-        ) = getNewspaperData(newspaperid, session, newspaper)
-        # Dictionary befüllen
-        metadata["zdbid_print"] = zdbid_print
-        metadata["sprache"] = sprache
-        metadata["standort"] = standort
-        metadata["publisher"] = publisher
-        metadata["urn"] = urn
-        metadata["newspapertitel"] = newspapertitel
-        metadata["zdbid_digital"] = zdbid_digital
-        # -----------------
-        metadata["dateIssued"] = jsondata["navDate"]
-        metadata["license"] = jsondata["license"]
-        metadata["dataprovider"] = jsondata["attribution"]
-        images = []
-        ocr = []
-        for s in jsondata["sequences"]:
-            for c in s["canvases"]:
-                images.append(c["images"][0]["resource"]["@id"])
+        if metadata["id"] in alreadygeneratedids:
+            logger.info(
+                f"Skip conversion of previously generated METS file for {metadata['id']}"
+            )
+            pass
+        else:
+            if not re.search(r"\s##\s", metadata["Titel"]):
+                logger.warning(f"{manifesturl} wahrscheinlich keine Zeitung!")
+                return
+            # Erweiterte Infos über das Manifest der Zeitung auslesen
+            (
+                zdbid_print,
+                sprache,
+                standort,
+                publisher,
+                urn,
+                zdbid_digital,
+                newspapertitel,
+                newspaper,
+            ) = getNewspaperData(newspaperid, session, newspaper)
+            # Dictionary befüllen
+            metadata["zdbid_print"] = zdbid_print
+            metadata["sprache"] = sprache
+            metadata["standort"] = standort
+            metadata["publisher"] = publisher
+            metadata["urn"] = urn
+            metadata["newspapertitel"] = newspapertitel
+            metadata["zdbid_digital"] = zdbid_digital
+            # -----------------
+            metadata["dateIssued"] = jsondata["navDate"]
+            metadata["license"] = jsondata["license"]
+            metadata["dataprovider"] = jsondata["attribution"]
+            images = []
+            ocr = []
             for s in jsondata["sequences"]:
                 for c in s["canvases"]:
-                    try:
-                        c["seeAlso"]
-                    except KeyError:
-                        logger.warning(f"Kein OCR bei {manifesturl}")
-                    else:
-                        ocr.append(c["seeAlso"]["@id"])
-        metadata["images"] = images
-        metadata["ocr"] = ocr
-        # fertiges Dict an die Liste der Issues appenden
-        generateMETS(metadata, logger, cwd, metsfolder)
-        issues.append(metadata)
-
-
-def convertManifestsToMETS(manifesturls):
-    for u in manifesturls:
-        parseMetadata(u, http)
-
-
-# -------------------------------------------------------------------------------------
-if __name__ == "__main__":
-    newspaper = []
-    issues = []
-
-    http = setup_requests()
-    logger.add(
-        sys.stderr, format="{time} {level} {message}", filter="my_module", level="INFO"
-    )
-    alreadygeneratedids = []
-    # for testing purposes:
-    manifesturls = [
-        "https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00003_u001/manifest",
-        "https://api.digitale-sammlungen.de/iiif/presentation/v2/bsb11327001_00037_u001/manifest",
-    ]
-    # if not Path.exists():
-
-    # loop over manifest URLs
-    for u in manifesturls:
-        parseMetadata(
-            u,
-            http,
-            newspaper,
-            issues,
-            alreadygeneratedids,
-            logger,
-            Path.cwd(),
-            "../METS",
-        )
-
-    # pickle newspaper metadata:
-    with open("../cache/newspaperdata.pkl", "wb") as f:
-        pickle.dump(newspaper, f)
+                    images.append(c["images"][0]["resource"]["@id"])
+                for s in jsondata["sequences"]:
+                    for c in s["canvases"]:
+                        try:
+                            c["seeAlso"]
+                        except KeyError:
+                            logger.warning(f"Kein OCR bei {manifesturl}")
+                        else:
+                            ocr.append(c["seeAlso"]["@id"])
+            metadata["images"] = images
+            metadata["ocr"] = ocr
+            # fertiges Dict an die Liste der Issues appenden
+            generateMETS(metadata, logger, cwd, metsfolder)
+            issues.append(metadata)

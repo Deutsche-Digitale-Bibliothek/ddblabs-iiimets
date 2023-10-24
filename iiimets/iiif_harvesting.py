@@ -7,10 +7,7 @@
 # @Date   : 17.12.2021, 13:01:27
 import pickle
 import sys
-import time
-from datetime import datetime
 from pathlib import Path
-from urllib import request
 
 import pandas as pd
 import requests
@@ -25,6 +22,7 @@ def getIdentifier(url: str, session: requests.Session, logger) -> list:
     - return list with Manifest URLs
     """
     manifests = []
+    print("getIdentifier with url: ", url)
 
     def getManifestURLs(response):
         apireturn = response.json()
@@ -53,6 +51,8 @@ def getIdentifier(url: str, session: requests.Session, logger) -> list:
         while True:
             # time.sleep(0.5)
             # Verbindungsversuch inkl. Errorhandling
+            if len(manifests) > 50:
+                break
             try:
                 response = session.get(url, verify=False, timeout=(20, 80))
             except Exception as e:
@@ -93,7 +93,7 @@ def getListOfManifests(
     """
     manifests = getIdentifier(url, session, logger)
     df = pd.DataFrame.from_records(manifests)
-    df.to_pickle("allmanifests.pkl")
+    df.to_pickle(Path(Path(__file__).parent.parent, "cache", "allmanifests.pkl"))
 
     if filter is not None:
         logger.info(f"Filter Manifests by {filter}")
@@ -103,10 +103,8 @@ def getListOfManifests(
     else:
         manifest_urls = df["url"].to_list()
 
-    with open(Path(cwd, "cache", "manifest_urls.pkl"), "wb") as f:
+    with open(
+        Path(Path(__file__).parent.parent, "cache", "manifest_urls.pkl"), "wb"
+    ) as f:
         pickle.dump(manifest_urls, f)
     return manifest_urls
-
-
-if __name__ == "__main__":
-    getListOfManifests(url, http, filter, cwd, logger)
