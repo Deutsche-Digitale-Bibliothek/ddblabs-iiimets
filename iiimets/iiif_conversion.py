@@ -23,7 +23,12 @@ from .templates import METS
 LANGUAGES_JSON = resource_filename(__name__, "res/languages.json")
 
 
-def generateMETS(metadata, logger, cwd, metsfolder):
+def generateMETS(metadata, logger, metsfolder):
+    """
+    Input: Dictionary mit den Metadaten
+    Output: METS XML
+    """
+
     def flgrp_default(images):
         n = 0
         x = ""
@@ -80,20 +85,21 @@ def generateMETS(metadata, logger, cwd, metsfolder):
             x += f'<mets:smLink xlink:from="log" xlink:to="phys_{n}" />\n'
         return x
 
-    """
-    XML Template zum füllen
-    """
+    print("---------------------------")
+    print(metadata)
+    # FIXME metadata["Zeitraum"] fehlt
+    metadata["Zeitraum"] = "1900-2000"
     # ! TODO issue_no
     volume = issue_no = originInfo = digitizationyear = ""
     url = "https://digipress.digitale-sammlungen.de"
     logo = "https://api.digitale-sammlungen.de/iiif/images/bsb_logo.png"
     r = r"(.+)##\s(.+),(.+)"
-    if re.match(r, metadata["Titel"]):
-        ausgabe = re.sub(r, r"\2", metadata["Titel"])
-        ausgabe_titel = re.sub(r, r"\1", metadata["Titel"]) + ", " + ausgabe
+    if re.match(r, metadata["newspapertitel"]):
+        ausgabe = re.sub(r, r"\2", metadata["newspapertitel"])
+        ausgabe_titel = re.sub(r, r"\1", metadata["newspapertitel"]) + ", " + ausgabe
     else:
         ausgabe = None
-        ausgabe_titel = metadata["Titel"]
+        ausgabe_titel = metadata["newspapertitel"]
     isodate = re.sub(r"(\d{4}-\d{2}-\d{2})(.+)", r"\1", metadata["dateIssued"])
     physlocation = re.sub(r"(.+)\s--\s(.+)", r"\1", metadata["standort"])
     shelfloc = re.sub(r"(.+)\s--\s(.+)", r"\2", metadata["standort"])
@@ -223,14 +229,19 @@ def generateMETS(metadata, logger, cwd, metsfolder):
         logger.warning(f"Errors were reported while parsing the generated XML: {e}")
         return
     else:
-        with open(Path(metsfolder, metadata["id"] + ".xml"), "w") as f:
+        metsfile = Path(metsfolder, metadata["id"] + ".xml")
+        with open(metsfile, "w") as f:
             indentedxml = etree.tostring(
                 newtree, method="xml", encoding="unicode", pretty_print=True
             )
             f.write(indentedxml)
             logger.info(f"{metadata['id']}.xml created successfully.")
         # log which IDs have already been generated as METS
-        with open(Path(cwd, "ids_of_generated_mets.txt"), "a", encoding="utf8") as f:
+        with open(
+            Path(Path(__file__).parent.parent, "ids_of_generated_mets.txt"),
+            "a",
+            encoding="utf8",
+        ) as f:
             f.write(metadata["id"] + "\n")
 
 
@@ -289,10 +300,18 @@ def getNewspaperData(id, session, newspaper):
             newspapertitel = ""
         else:
             newspapertitel = newspapertitel[0].text
-        # ! TODO newspaper Titelk noch die nicht sortierzeichen entfernen
+        # ! TODO newspaper Titel noch die Nicht-Sortierzeichen entfernen
         return zdbid_digital, newspapertitel
 
     def gatherinfos():
+        """
+        Again loads JSON Manifest from URL and extracts Metadata
+
+        Returns a tuple with the following values:
+        zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel
+
+
+        """
         metadata = {}
         # TODO this needs to be a parameter
         newspaper_manifest_url = (
@@ -305,13 +324,19 @@ def getNewspaperData(id, session, newspaper):
                 metadata[e["label"][0]["@value"]] = e["value"][0]["@value"]
             else:
                 metadata[e["label"][0]["@value"]] = e["value"]
-        zdbid_print = re.sub("ZDB ", "", metadata["Identifikator"])
+        # FIXME metadata["Identifikator"] is not there
+        # ZDB ID bekommen wir über jsonmetadata["seeAlso"][0]["@id"]
+        zdbid_print = re.sub(
+            "https://opacplus.bsb-muenchen.de/title/",
+            "",
+            jsonmetadata["seeAlso"][0]["@id"],
+        )
         zdbid_digital, newspapertitel = get_data_from_zdbsru(zdbid_print)
         try:
             sprache = metadata["Sprache"]
         except KeyError:
             sprache = "Nicht zu entscheiden"
-        standort = metadata["Standort"]
+        standort = ""
         metadata["Newspapertitle"] = newspapertitel
         try:
             publisher = metadata["Von"]
@@ -400,6 +425,7 @@ def parseMetadata(
 ):
     """
     Load IIIF JSON Manifest from URL, extract Metadata and generate METS XML.
+    FIXME Pass already downloaded JSON
     """
 
     try:
@@ -410,12 +436,15 @@ def parseMetadata(
     jsonmetadata = jsondata["metadata"]
     #  get MDZ Newspaper ID
     if isinstance(jsondata["seeAlso"], list):
+        # if there are multiple seeAlso links, we need to find the one that points to the MDZ
+        # and extract the ID from there
         for i in jsondata["seeAlso"]:
             if i["@id"].startswith("https://digitale-sammlungen.de"):
                 newspaperid = re.sub(
                     r"(https://digitale-sammlungen\.de/details/)(.+)", r"\2", i["@id"]
                 )
     else:
+        # only one seeAlso link, so we can extract the ID directly
         try:
             jsondata["seeAlso"]["@id"]
         except KeyError:
@@ -428,33 +457,40 @@ def parseMetadata(
                     jsondata["seeAlso"]["@id"],
                 )
             else:
+                # no luck getting the ID, so we need to skip this issue
                 logger.error("Problem beim parsen der Newspaper ID")
                 return
-    # Dict aufmachen
-    metadata = {}
+    # Empty dict for collected metadata
+    extracted_metadata = {}
     for e in jsonmetadata:
-        if e["label"][0]["@value"] == "Identifikator des digitalen Objekts":
-            metadata["id"] = re.sub(r"(<a href=.+>)(.+)(</a>)", r"\2", e["value"])
-            metadata["purl"] = "https://mdz-nbn-resolving.de/view:" + re.sub(
+        # for each subdict in the metadata list check if the english label is "Digital Object Identifier"
+        if e["label"][0]["@value"] == "Digital Object Identifier":
+            # if it is, extract the ID from there
+            extracted_metadata["id"] = re.sub(
                 r"(<a href=.+>)(.+)(</a>)", r"\2", e["value"]
             )
-        else:
-            metadata[e["label"][0]["@value"]] = e["value"]
+            extracted_metadata["purl"] = "https://mdz-nbn-resolving.de/view:" + re.sub(
+                r"(<a href=.+>)(.+)(</a>)", r"\2", e["value"]
+            )
+    # Now check if we have the ID
     try:
-        # FIXME den Key gibt es nicht?
-        metadata["id"]
+        extracted_metadata["id"]
+
     except KeyError:
         logger.error(f"Keine ID für {manifesturl} gefunden")
-        print(metadata)
+
         return
     else:
-        if metadata["id"] in alreadygeneratedids:
+        # check if we have already generated a METS file for this issue
+        if extracted_metadata["id"] in alreadygeneratedids:
             logger.info(
-                f"Skip conversion of previously generated METS file for {metadata['id']}"
+                f"Skip conversion of previously generated METS file for {extracted_metadata['id']}"
             )
             pass
         else:
-            if not re.search(r"\s##\s", metadata["Titel"]):
+            json_metadata_title = jsonmetadata[0]["value"]
+
+            if not re.search(r"\s##\s", json_metadata_title):
                 logger.warning(f"{manifesturl} wahrscheinlich keine Zeitung!")
                 return
             # Erweiterte Infos über das Manifest der Zeitung auslesen
@@ -469,17 +505,17 @@ def parseMetadata(
                 newspaper,
             ) = getNewspaperData(newspaperid, session, newspaper)
             # Dictionary befüllen
-            metadata["zdbid_print"] = zdbid_print
-            metadata["sprache"] = sprache
-            metadata["standort"] = standort
-            metadata["publisher"] = publisher
-            metadata["urn"] = urn
-            metadata["newspapertitel"] = newspapertitel
-            metadata["zdbid_digital"] = zdbid_digital
+            extracted_metadata["zdbid_print"] = zdbid_print
+            extracted_metadata["sprache"] = sprache
+            extracted_metadata["standort"] = standort
+            extracted_metadata["publisher"] = publisher
+            extracted_metadata["urn"] = urn
+            extracted_metadata["newspapertitel"] = newspapertitel
+            extracted_metadata["zdbid_digital"] = zdbid_digital
             # -----------------
-            metadata["dateIssued"] = jsondata["navDate"]
-            metadata["license"] = jsondata["license"]
-            metadata["dataprovider"] = jsondata["attribution"]
+            extracted_metadata["dateIssued"] = jsondata["navDate"]
+            extracted_metadata["license"] = jsondata["license"][0]
+            extracted_metadata["dataprovider"] = jsondata["attribution"]
             images = []
             ocr = []
             for s in jsondata["sequences"]:
@@ -493,8 +529,8 @@ def parseMetadata(
                             logger.warning(f"Kein OCR bei {manifesturl}")
                         else:
                             ocr.append(c["seeAlso"]["@id"])
-            metadata["images"] = images
-            metadata["ocr"] = ocr
+            extracted_metadata["images"] = images
+            extracted_metadata["ocr"] = ocr
             # fertiges Dict an die Liste der Issues appenden
-            generateMETS(metadata, logger, cwd, metsfolder)
-            issues.append(metadata)
+            generateMETS(extracted_metadata, logger, metsfolder)
+            issues.append(extracted_metadata)
