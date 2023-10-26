@@ -17,6 +17,8 @@ from urllib3.util.retry import Retry
 
 from .iiif_conversion import parseMetadata, setup_requests
 from .iiif_harvesting import getListOfManifests
+from .download_ocrxml import downloadhOCR, runXSLonFolder
+from .convert_ocr import transformHOCR
 
 # from .download_ocrxml import downloadhOCR, runXSLonFolder
 
@@ -132,11 +134,12 @@ def start(
     update: bool,
 ):
     """
-    Übergibt die URLs der IIIF Manifeste und andere zuvor gesammelte Variablen der
+    Übergibt die URLs der IIIF Manifeste und andere zuvor gesammelte Variablen
+    parallelisiert der parseMetadata Funktion.
     """
     logger.debug(f"Generating METS Files with {threads} Threads.")
 
-    # Inbfos aus dem Cache laden
+    # Infos aus dem Cache laden
     if caching is True:
         if Path(Path(__file__).parent.parent, "cache", "newspaperdata.pkl").exists():
             with open(
@@ -180,6 +183,7 @@ def start(
     issues = []
 
     # ----------------------------------------------------------------
+    # For each URL in newspaperurls: get
     loop = asyncio.get_event_loop()
     future = asyncio.ensure_future(
         get_data_asynchronous(
@@ -203,8 +207,10 @@ def start(
 
 
 def main():
-    saxonpath = "java -jar " + resource_filename(__name__, "res/saxon-he-10.6.jar")
-    # Parse Arguments
+    # saxon JAR is need for the hOCR to ALTO Conversion
+    # https://github.com/Saxonica/Saxon-HE/releases/download/SaxonHE12-3/SaxonHE12-3J.zip
+    saxonpath = "java -jar " + resource_filename(__name__, "res/saxon.jar")
+    # First Step: Parse Arguments from CLI call
     url, file, cache, update, filter = parseargs()
     # Initialize Logger
     logname = Path(
@@ -213,6 +219,7 @@ def main():
             time.strftime("%Y-%m-%d_%H%M") + "_iiimets" + ".log",
         )
     )
+    # configure logger
     PARAMETER = logger.level("PARAMETER", no=38, color="<blue>")
     logger.add(
         logname,
@@ -220,18 +227,24 @@ def main():
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
         enqueue=True,
     )
+    # Define filterstring: Wenn der String im Newspaper Titel vorkommt ist es eine Zeitung
+    # TODO Wird grade nicht benutzt?
     # filterstring = "##"
     filterstring = None
+
+    # Setup requests Session
+    # FIXME rename
     http = setup_requests()
     date = time.strftime("%Y-%m-%d")
-    # IIIF Manifest-URLs
-    # Either harvest a Collection (WIP) or read Manifest URLs from list (pickled or text file)
+
+    # Get IIIF Manifest-URLs
+    # Either harvest a IIIF Collection (WIP) or read Manifest URLs from list (pickled or text file)
     if file is None and url is None:
         sys.exit(
             "Error: You either need to pass an URL to an IIIF Collection or the Path to a file containg links to IIIF Manifests"
         )
     elif file is not None:
-        # when we ware passed the Path to a file containing IIIF Manifest URLs
+        # when we pass the path to a file containing IIIF Manifest URLs
         if file.endswith(".txt"):
             # if it’s a text file
             manifest_urls = [line.rstrip("\n") for line in open(file)]
@@ -247,12 +260,14 @@ def main():
         manifest_urls = getListOfManifests(
             url + "?cursor=initial", http, filter, Path(__file__).parent.parent, logger
         )
-
+    # at this point manifest_urls contains a list of IIIF Manifest URLs
     if len(manifest_urls) == 0:
+        logger.warning("No manifest URLs to process. Exit.")
         sys.exit()
     # ----------------------------------------------------
     # Folder Creation
     # ----------------------------------------------------
+    # FIXME use Pathlib
     metsfolder_main = Path(Path(__file__).parent.parent, "_METS")
     if metsfolder_main.exists():
         pass
@@ -284,20 +299,31 @@ def main():
     else:
         altofolder.mkdir()
     # ----------------------------------------------------
-    # Start:
+    # Processing
     # ----------------------------------------------------
+
+    # IIIF Manifest URL -> METS/MODS XML
     start(manifest_urls, Path(__file__).parent.parent, metsfolder, 16, cache, update)
 
     # Compress generated METS files:
     # TODO The following steps need to be toggled by commandline options
     # shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
-    # downloadhOCR(metsfolder, hocrfolder)
+
+    # ----------------------------------------------------
+    # Process Fulltext XML
+
+    # 1. Download linked hOCR files
+    downloadhOCR(metsfolder, hocrfolder)
     # shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
-    # runXSLonFolder(hocrfolder, altofolder, Path(__file__).parent.parent, saxonpath)
+
+    # 2. hORC to ALTO
+    runXSLonFolder(hocrfolder, altofolder, Path(__file__).parent.parent, saxonpath)
     # logger.info('Erstelle ZIP Dateien')
     # shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
+
+    # ----------------------------------------------------
     # Cleanup
-    # logger.info('Starte Cleanup')
+    # logger.info('Clean up temp files')
     # shutil.rmtree(hocrfolder)
     # shutil.rmtree(altofolder)
     # shutil.rmtree(metsfolder)

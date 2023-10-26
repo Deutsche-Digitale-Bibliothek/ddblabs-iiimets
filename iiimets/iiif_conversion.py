@@ -85,8 +85,6 @@ def generateMETS(metadata, logger, metsfolder):
             x += f'<mets:smLink xlink:from="log" xlink:to="phys_{n}" />\n'
         return x
 
-    print("---------------------------")
-    print(metadata)
     # FIXME metadata["Zeitraum"] fehlt
     metadata["Zeitraum"] = "1900-2000"
     # ! TODO issue_no
@@ -121,7 +119,7 @@ def generateMETS(metadata, logger, metsfolder):
         <mods:mods>
         <mods:typeOfResource>text</mods:typeOfResource>
         <mods:part order="{re.sub("-", "", isodate)}">
-        <mods:detail type="volume">
+        <mods:detail type="volume">Hallo
         <mods:number>{volume}</mods:number>
         </mods:detail>
         <mods:detail type="issue">
