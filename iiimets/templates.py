@@ -1,4 +1,4 @@
-class METS:
+class metsTemplate:
     def __init__(self, itemid):
         self.itemid = itemid
         self.time = time

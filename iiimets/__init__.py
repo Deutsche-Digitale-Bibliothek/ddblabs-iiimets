@@ -2,8 +2,10 @@ import argparse
 import asyncio
 import pickle
 import re
+import shutil
 import sys
 import time
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from timeit import default_timer
@@ -15,12 +17,11 @@ from pkg_resources import resource_filename
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .iiif_conversion import parseMetadata, setup_requests
+from .convert_ocr import run_xsl_on_folder, transformHOCR
+from .download_ocrxml import download_hocr
+from .helpers import setup_requests
+from .iiif_conversion import iiif_to_metsmods
 from .iiif_harvesting import getListOfManifests
-from .download_ocrxml import downloadhOCR, runXSLonFolder
-from .convert_ocr import transformHOCR
-
-# from .download_ocrxml import downloadhOCR, runXSLonFolder
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -35,13 +36,28 @@ def parseargs():
 
     parser.add_argument("--url", dest="url", help="URL of IIIF Collection to harvest")
     parser.add_argument("--file", dest="file", help="Filename to pickeld URL list")
-    parser.add_argument("--filter", dest="filter", help="String to filter Manifests by")
+    parser.add_argument(
+        "--outputfolder",
+        dest="output_folder_main",
+        help="Folder to save the extracted Data to",
+        default=None,
+    )
+    parser.add_argument(
+        "--filter", dest="filter", help="String to filter Manifests by", default="##"
+    )
     parser.add_argument(
         "--no-cache",
         required=False,
         dest="cache",
         action="store_false",
         help="If set, no cache is used",
+    )
+    parser.add_argument(
+        "--no-fulltext-processing",
+        required=False,
+        dest="fulltext",
+        action="store_false",
+        help="If set, no processing of fulltext XML is done",
     )
     parser.add_argument(
         "--no-update",
@@ -58,18 +74,20 @@ def parseargs():
     else:
         url = args["url"]
         file = args["file"]
-        filter = args["filter"]
+        filterstring = args["filter"]
         cache = args["cache"]
+        fulltext = args["fulltext"]
         update = args["update"]
+        output_folder_main = args["output_folder_main"]
         if url is not None:
             if re.match(urlregex, url):
                 url = url
             else:
                 parser.error("URL is not valid.")
-        return url, file, cache, update, filter
+        return url, file, cache, update, filterstring, output_folder_main, fulltext
 
 
-def loadManifestURLsFromPickle(cwd: Path, fname: str, logger) -> list:
+def load_manifest_urls_from_pickle(cwd: Path, fname: str, logger) -> list:
     if Path(Path(__file__).parent.parent, fname).exists():
         with open(Path(Path(__file__).parent.parent, fname), "rb") as f:
             newspaper_urls = pickle.load(f)
@@ -103,7 +121,7 @@ async def get_data_asynchronous(
             tasks = [
                 loop.run_in_executor(
                     executor,
-                    parseMetadata,
+                    iiif_to_metsmods,
                     *(
                         url,
                         session,
@@ -125,7 +143,7 @@ async def get_data_asynchronous(
             )
 
 
-def start(
+def start_iiif_to_metsmods_conversion(
     newspaper_urls: list,
     cwd: Path,
     metsfolder: Path,
@@ -180,16 +198,16 @@ def start(
     else:
         alreadygeneratedids = []
 
-    issues = []
+    list_of_processed_issues = []
 
     # ----------------------------------------------------------------
-    # For each URL in newspaperurls: get
+    # Start parallel processing of URLs (unnecessarily complex/bloated)
     loop = asyncio.get_event_loop()
     future = asyncio.ensure_future(
         get_data_asynchronous(
             newspaper_urls,
             newspaper,
-            issues,
+            list_of_processed_issues,
             alreadygeneratedids,
             logger,
             metsfolder,
@@ -198,7 +216,7 @@ def start(
     )
     loop.run_until_complete(future)
     # ----------------------------------------------------------------
-    # Cleanup: Infos pickeln
+    # Cleanup: Pickle metadata about the newspapers (not the issues!) to use as a cache in subsequent runs
     with open(
         Path(Path(__file__).parent.parent, "cache", "newspaperdata.pkl"), "wb"
     ) as f:
@@ -207,11 +225,17 @@ def start(
 
 
 def main():
-    # saxon JAR is need for the hOCR to ALTO Conversion
-    # https://github.com/Saxonica/Saxon-HE/releases/download/SaxonHE12-3/SaxonHE12-3J.zip
-    saxonpath = "java -jar " + resource_filename(__name__, "res/saxon.jar")
     # First Step: Parse Arguments from CLI call
-    url, file, cache, update, filter = parseargs()
+    (
+        url,
+        file,
+        cache,
+        update,
+        filterstring,
+        output_folder_main,
+        fulltext_processing,
+    ) = parseargs()
+
     # Initialize Logger
     logname = Path(
         Path(
@@ -227,15 +251,51 @@ def main():
         format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <level>{message}</level>",
         enqueue=True,
     )
-    # Define filterstring: Wenn der String im Newspaper Titel vorkommt ist es eine Zeitung
-    # TODO Wird grade nicht benutzt?
-    # filterstring = "##"
-    filterstring = None
-
     # Setup requests Session
-    # FIXME rename
-    http = setup_requests()
-    date = time.strftime("%Y-%m-%d")
+    REQUESTS_SESSION = setup_requests()
+    DATE = time.strftime("%Y-%m-%d")
+    # check if saxon.jar is present
+    if fulltext_processing is True:
+        res_folder = Path(Path(__file__).parent, "res")
+        saxon_files = res_folder.glob("saxon-he-1*")
+        saxon_file = next(saxon_files, None)
+        if saxon_file is not None:
+            saxon_file_name = saxon_file
+            saxonpath = "java -jar " + str(saxon_file_name)
+        else:
+            logger.info(
+                f"To run hOCR to ALTO Conversion you need a saxon.jar file in the folder {Path(Path(__file__), 'res')}."
+            )
+            latest_saxon_he_release = REQUESTS_SESSION.get(
+                "https://api.github.com/repos/Saxonica/Saxon-HE/releases"
+            ).json()[0]["assets"][2]["browser_download_url"]
+            # download file to res folder
+            logger.info(f"Downloading {latest_saxon_he_release}")
+            r = REQUESTS_SESSION.get(latest_saxon_he_release, stream=True)
+            with open(Path(Path(__file__).parent, "res", "saxon.zip"), "wb") as f:
+                for chunk in r.iter_content(chunk_size=128):
+                    f.write(chunk)
+            # Extract only files ending in ".jar" from the ZIP file
+            with zipfile.ZipFile(
+                Path(Path(__file__).parent, "res", "saxon.zip")
+            ) as zip_ref:
+                for file_name in zip_ref.namelist():
+                    if file_name.endswith(".jar"):
+                        if file_name.startswith("saxon-he-1"):
+                            saxon_file_name = file_name
+                            zip_ref.extract(
+                                file_name, Path(Path(__file__).parent, "res")
+                            )
+            # delete zip file
+            Path(Path(__file__).parent, "res", "saxon.zip").unlink()
+            # check now if saxon.jar is present
+            if not Path(Path(__file__).parent, "res", saxon_file_name).exists():
+                logger.info("Couldn’t download saxon.jar. Please download it manually.")
+                sys.exit()
+            else:
+                saxonpath = "java -jar " + str(
+                    Path(Path(__file__).parent, "res", saxon_file_name)
+                )
 
     # Get IIIF Manifest-URLs
     # Either harvest a IIIF Collection (WIP) or read Manifest URLs from list (pickled or text file)
@@ -250,7 +310,7 @@ def main():
             manifest_urls = [line.rstrip("\n") for line in open(file)]
         elif file.endswith(".pkl"):
             # if it ends with pkl we assume it’s pickled
-            manifest_urls = loadManifestURLsFromPickle(
+            manifest_urls = load_manifest_urls_from_pickle(
                 Path(__file__).parent.parent, file, logger
             )
         else:
@@ -258,76 +318,69 @@ def main():
     elif url is not None:
         logger.info(f"Getting Manifest URLs from {url}")
         manifest_urls = getListOfManifests(
-            url + "?cursor=initial", http, filter, Path(__file__).parent.parent, logger
+            url + "?cursor=initial",
+            REQUESTS_SESSION,
+            filter,
+            Path(__file__).parent.parent,
+            logger,
         )
     # at this point manifest_urls contains a list of IIIF Manifest URLs
     if len(manifest_urls) == 0:
         logger.warning("No manifest URLs to process. Exit.")
         sys.exit()
     # ----------------------------------------------------
-    # Folder Creation
+    # Outputfolder Creation
     # ----------------------------------------------------
-    # FIXME use Pathlib
-    metsfolder_main = Path(Path(__file__).parent.parent, "_METS")
-    if metsfolder_main.exists():
-        pass
-    else:
-        metsfolder_main.mkdir()
+    if not output_folder_main:
+        output_folder_main = Path(__file__).parent.parent
 
-    ocrfolder_main = Path(Path(__file__).parent.parent, "_OCR")
-    if ocrfolder_main.exists():
-        pass
-    else:
-        ocrfolder_main.mkdir()
+    metsfolder_main = Path(output_folder_main, "_METS")
+    metsfolder_main.mkdir(parents=True, exist_ok=True)
 
-    metsfolder = Path(Path(__file__).parent.parent, "_METS", date)
-    if metsfolder.exists():
-        pass
-    else:
-        metsfolder.mkdir()
+    ocrfolder_main = Path(output_folder_main, "_OCR")
+    ocrfolder_main.mkdir(parents=True, exist_ok=True)
 
-    hocrfolder = Path(Path(__file__).parent.parent, "_OCR", date, "hOCR")
-    if hocrfolder.exists():
-        pass
-    else:
-        Path(Path(__file__).parent.parent, "_OCR", date).mkdir()
-        hocrfolder.mkdir()
+    metsfolder = Path(output_folder_main, "_METS", DATE)
+    metsfolder.mkdir(parents=True, exist_ok=True)
 
-    altofolder = Path(hocrfolder.parent, "ALTO")
-    if altofolder.exists():
-        pass
-    else:
-        altofolder.mkdir()
+    hocrfolder = Path(output_folder_main, "_OCR", DATE, "hOCR")
+    hocrfolder.mkdir(parents=True, exist_ok=True)
+
+    altofolder = Path(output_folder_main, "_OCR", DATE, "ALTO")
+    altofolder.mkdir(parents=True, exist_ok=True)
+
     # ----------------------------------------------------
     # Processing
     # ----------------------------------------------------
 
     # IIIF Manifest URL -> METS/MODS XML
-    start(manifest_urls, Path(__file__).parent.parent, metsfolder, 16, cache, update)
-
+    start_iiif_to_metsmods_conversion(
+        manifest_urls, Path(__file__).parent.parent, metsfolder, 16, cache, update
+    )
     # Compress generated METS files:
-    # TODO The following steps need to be toggled by commandline options
-    # shutil.make_archive(f'{date}_METS', 'zip', metsfolder)
+    shutil.make_archive(f"{DATE}_METS", "zip", metsfolder)
 
     # ----------------------------------------------------
     # Process Fulltext XML
+    if fulltext_processing is True:
+        # 1. Download linked hOCR files
+        download_hocr(metsfolder, hocrfolder)
+        shutil.make_archive(f"{DATE}_hOCR", "zip", hocrfolder)
 
-    # 1. Download linked hOCR files
-    downloadhOCR(metsfolder, hocrfolder)
-    # shutil.make_archive(f'{date}_hOCR', 'zip', hocrfolder)
+        # 2. hORC to ALTO
+        run_xsl_on_folder(
+            hocrfolder, altofolder, Path(__file__).parent.parent, saxonpath, logger
+        )
+        shutil.make_archive(f"{DATE}_ALTO", "zip", altofolder)
 
-    # 2. hORC to ALTO
-    runXSLonFolder(hocrfolder, altofolder, Path(__file__).parent.parent, saxonpath)
-    # logger.info('Erstelle ZIP Dateien')
-    # shutil.make_archive(f'{date}_ALTO', 'zip', altofolder)
+        shutil.rmtree(hocrfolder)
+        shutil.rmtree(altofolder)
 
     # ----------------------------------------------------
     # Cleanup
-    # logger.info('Clean up temp files')
-    # shutil.rmtree(hocrfolder)
-    # shutil.rmtree(altofolder)
-    # shutil.rmtree(metsfolder)
-    # shutil.rmtree(Path(Path(__file__).parent.parent, '_OCR', date))
+    logger.info("Clean up temp files")
+    shutil.rmtree(metsfolder)
+    shutil.rmtree(Path(Path(__file__).parent.parent, "_OCR", DATE))
     logger.info("Process completed")
 
 

@@ -15,17 +15,38 @@ from pathlib import Path
 import requests
 from lxml import etree
 from pkg_resources import resource_filename
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 
-from .templates import METS
+from .templates import metsTemplate
 
 LANGUAGES_JSON = resource_filename(__name__, "res/languages.json")
 
 
-def generateMETS(metadata, logger, metsfolder):
+def save_xml_string_to_file(xmltemplate, logger, metsfolder, metadata):
+    try:
+        newtree = etree.fromstring(xmltemplate)
+    except etree.XMLSyntaxError as e:
+        logger.warning(f"Errors were reported while parsing the generated XML: {e}")
+        return
+    else:
+        metsfile = Path(metsfolder, metadata["id"] + ".xml")
+        with open(metsfile, "w") as f:
+            indentedxml = etree.tostring(
+                newtree, method="xml", encoding="unicode", pretty_print=True
+            )
+            f.write(indentedxml)
+            logger.info(f"{metadata['id']}.xml created successfully.")
+        # log which IDs have already been generated as METS
+        with open(
+            Path(Path(__file__).parent.parent, "ids_of_generated_mets.txt"),
+            "a",
+            encoding="utf8",
+        ) as f:
+            f.write(metadata["id"] + "\n")
+
+
+def generate_metsmods_from_dict(metadata, logger, metsfolder):
     """
-    Input: Dictionary mit den Metadaten
+    Input: Dictionary with metadata
     Output: METS XML
     """
 
@@ -85,9 +106,9 @@ def generateMETS(metadata, logger, metsfolder):
             x += f'<mets:smLink xlink:from="log" xlink:to="phys_{n}" />\n'
         return x
 
-    # FIXME metadata["Zeitraum"] fehlt
-    metadata["Zeitraum"] = "1900-2000"
-    # ! TODO issue_no
+    # we need to make shure that the metadata-dict contains all keys needed
+
+    # TODO missing information?
     volume = issue_no = originInfo = digitizationyear = ""
     url = "https://digipress.digitale-sammlungen.de"
     logo = "https://api.digitale-sammlungen.de/iiif/images/bsb_logo.png"
@@ -119,11 +140,11 @@ def generateMETS(metadata, logger, metsfolder):
         <mods:mods>
         <mods:typeOfResource>text</mods:typeOfResource>
         <mods:part order="{re.sub("-", "", isodate)}">
-        <mods:detail type="volume">Hallo
+        <mods:detail type="volume">
         <mods:number>{volume}</mods:number>
         </mods:detail>
         <mods:detail type="issue">
-        <mods:number>{issue_no + ', ' if issue_no else ''}{metadata['Zeitraum']}</mods:number>
+        <mods:number>{issue_no + ', ' if issue_no else ''}</mods:number>
         <mods:title>{ausgabe_titel}</mods:title>
         </mods:detail>
         </mods:part>
@@ -208,7 +229,7 @@ def generateMETS(metadata, logger, metsfolder):
                 </mets:div>
         </mets:structMap>
         <mets:structMap TYPE="LOGICAL">
-        <mets:div TYPE="issue" ID="log" DMDID="dmd" ADMID="amd" ORDER="1" ORDERLABEL="{isodate}" LABEL="{issue_no + ', ' if issue_no else ''}{metadata['Zeitraum']}"></mets:div>
+        <mets:div TYPE="issue" ID="log" DMDID="dmd" ADMID="amd" ORDER="1" ORDERLABEL="{isodate}" LABEL="{issue_no + ', ' if issue_no else ''}"></mets:div>
         </mets:structMap>
         <mets:structLink xmlns="http://www.w3.org/TR/xhtml1/strict" xmlns:dv="http://dfg-viewer.de/" xmlns:xs="http://www.w3.org/2001/XMLSchema">
                     {structLink(metadata['images'])}
@@ -220,55 +241,10 @@ def generateMETS(metadata, logger, metsfolder):
     Output auf Validität prüfen und speichern
     """
     xmltemplate = re.sub("&", "&amp;", xmltemplate)
-
-    try:
-        newtree = etree.fromstring(xmltemplate)
-    except etree.XMLSyntaxError as e:
-        logger.warning(f"Errors were reported while parsing the generated XML: {e}")
-        return
-    else:
-        metsfile = Path(metsfolder, metadata["id"] + ".xml")
-        with open(metsfile, "w") as f:
-            indentedxml = etree.tostring(
-                newtree, method="xml", encoding="unicode", pretty_print=True
-            )
-            f.write(indentedxml)
-            logger.info(f"{metadata['id']}.xml created successfully.")
-        # log which IDs have already been generated as METS
-        with open(
-            Path(Path(__file__).parent.parent, "ids_of_generated_mets.txt"),
-            "a",
-            encoding="utf8",
-        ) as f:
-            f.write(metadata["id"] + "\n")
+    return xmltemplate
 
 
-def setup_requests() -> requests.Session:
-    """Sets up a requests session to automatically retry on errors
-
-    cf. <https://findwork.dev/blog/advanced-usage-python-requests-timeouts-retries-hooks/>
-
-    Returns
-    -------
-    http : requests.Session
-        A fully configured requests Session object
-    """
-    http = requests.Session()
-    assert_status_hook = lambda response, *args, **kwargs: response.raise_for_status()
-    http.hooks["response"] = [assert_status_hook]
-    retry_strategy = Retry(
-        total=3,
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET"],
-        backoff_factor=1,
-    )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    http.mount("https://", adapter)
-    http.mount("http://", adapter)
-    return http
-
-
-def getNewspaperData(id, session, newspaper, zdb_id_print):
+def get_newspaper_data(id, session, newspaper, zdb_id_print):
     """
     bekommt die id des newspapers und die Liste mit den zuvor ggf. schon gesammelten Infos zu den Zeitungen
     Ruft Informationen über die SRU Schnittstelle der ZDB ab
@@ -304,38 +280,39 @@ def getNewspaperData(id, session, newspaper, zdb_id_print):
         # ! TODO newspaper Titel noch die Nicht-Sortierzeichen entfernen
         return zdbid_digital, newspapertitel
 
-    def gatherinfos(zdb_id_print):
+    def get_data_from_newspaper_manifest(zdb_id_print, id):
         """
         Again loads JSON Manifest from URL and extracts Metadata
 
         Returns a tuple with the following values:
         zdbid_print, sprache, standort, publisher, urn, zdbid_digital, newspapertitel
         """
-        metadata = {}
+        newspaper_metadata = {}
         # TODO this needs to be a parameter
         newspaper_manifest_url = (
             f"https://api.digitale-sammlungen.de/iiif/presentation/v2/{id}/manifest"
         )
+        # FIXME This is off -
         issue_metadata = json.loads(session.get(newspaper_manifest_url).text)
-        metadata[id] = id
+        newspaper_metadata[id] = id
         for e in issue_metadata["metadata"]:
             if isinstance(e["value"], list):
-                metadata[e["label"][0]["@value"]] = e["value"][0]["@value"]
+                newspaper_metadata[e["label"][0]["@value"]] = e["value"][0]["@value"]
             else:
-                metadata[e["label"][0]["@value"]] = e["value"]
+                newspaper_metadata[e["label"][0]["@value"]] = e["value"]
         # FIXME metadata["Identifikator"] is not there
         zdbid_digital, newspapertitel = get_data_from_zdbsru(zdb_id_print)
         try:
-            sprache = metadata["Sprache"]
+            sprache = newspaper_metadata["Sprache"]
         except KeyError:
             sprache = "Nicht zu entscheiden"
         standort = ""
-        metadata["Newspapertitle"] = newspapertitel
+        newspaper_metadata["Newspapertitle"] = newspapertitel
         try:
-            publisher = metadata["Von"]
+            publisher = newspaper_metadata["Von"]
         except KeyError:
             publisher = ""
-        urn = re.sub(r"<.+?()>(.+)<\/a>", r"\2", metadata["URN"])
+        urn = re.sub(r"<.+?()>(.+)<\/a>", r"\2", newspaper_metadata["URN"])
         # Newspaper Dict erstellen, damit wir beim nächsten mal nicht wieder alles parsen müssen
         npdict = {}
         npdict["id"] = id
@@ -367,10 +344,10 @@ def getNewspaperData(id, session, newspaper, zdb_id_print):
             urn,
             zdbid_digital,
             newspapertitel,
-        ) = gatherinfos(zdb_id_print)
+        ) = get_data_from_newspaper_manifest(zdb_id_print, id)
     else:
         # schauen, ob wir zu der Zeitung die Metadaten schon abgerufen haben
-        # newspaper ist eine Liste mit Dicts.
+        # newspaper ist eine Liste mit Dicts, in denen die Metadaten zu den Zeitungsunternehmungen enthalten sind
         try:
             pos = list(map(itemgetter("id"), newspaper)).index(id)
         except:
@@ -381,7 +358,7 @@ def getNewspaperData(id, session, newspaper, zdb_id_print):
                 urn,
                 zdbid_digital,
                 newspapertitel,
-            ) = gatherinfos(zdb_id_print)
+            ) = get_data_from_newspaper_manifest(zdb_id_print, id)
         else:
             zdbid_digital = newspaper[pos]["metadata"]["zdbid_digital"]
             sprache = newspaper[pos]["metadata"]["sprache"]
@@ -401,7 +378,7 @@ def getNewspaperData(id, session, newspaper, zdb_id_print):
     )
 
 
-def parseMetadata(
+def iiif_to_metsmods(
     manifesturl: str,
     session: requests.session,
     newspaper,
@@ -412,15 +389,19 @@ def parseMetadata(
     metsfolder,
 ):
     """
-    Load IIIF JSON Manifest from URL, extract Metadata and generate METS XML.
-    FIXME Pass already downloaded JSON
+    - Load IIIF JSON Manifest from URL
+    - extract Metadata
+    - enrich metadata from external sources
+    - generate METS XML.
     """
 
+    # Load JSON IIIF Manifest
     try:
         issue_json = json.loads(session.get(manifesturl).text)
     except json.decoder.JSONDecodeError:
         logger.error(f"Failed to JSON Decode {manifesturl}")
         return
+    # Read "metadata" Key of JSON
     issue_metadata = issue_json["metadata"]
     #  get MDZ Newspaper ID
     if isinstance(issue_json["seeAlso"], list):
@@ -450,9 +431,10 @@ def parseMetadata(
                 # no luck getting the ID, so we need to skip this issue
                 logger.error("Problem beim parsen der Newspaper ID")
                 return
-    # Empty dict for collected metadata
+    # -------------------------------------------------------------
+    # Create an empty dict for collecting metadata
     extracted_metadata = {}
-    # ZDB ID bekommen wir über issue_metadata["seeAlso"][0]["@id"]
+    # extract ZDB-ID
     zdbid_print = issue_json["seeAlso"][0]["@id"].split("/")[-1]
     for e in issue_metadata:
         # for each subdict in the metadata list check if the english label is "Digital Object Identifier"
@@ -467,7 +449,6 @@ def parseMetadata(
     # Now check if we have the ID
     try:
         extracted_metadata["id"]
-
     except KeyError:
         logger.error(f"Keine ID für {manifesturl} gefunden")
         return
@@ -480,11 +461,11 @@ def parseMetadata(
             pass
         else:
             issue_title = issue_metadata[0]["value"]
-
             if not re.search(r"\s##\s", issue_title):
                 logger.warning(f"{manifesturl} wahrscheinlich keine Zeitung!")
                 return
-            # Erweiterte Infos über das Manifest der Zeitung auslesen
+            # Get additional information about the newspaper from the manifest of the newspaper
+            # This is done because the issue-manifest is missing some key points
             (
                 sprache,
                 standort,
@@ -493,8 +474,8 @@ def parseMetadata(
                 zdbid_digital,
                 newspapertitel,
                 newspaper,
-            ) = getNewspaperData(newspaperid, session, newspaper, zdbid_print)
-            # Dictionary befüllen
+            ) = get_newspaper_data(newspaperid, session, newspaper, zdbid_print)
+            # fill dictionary
             extracted_metadata["zdbid_print"] = zdbid_print
             extracted_metadata["sprache"] = sprache
             extracted_metadata["standort"] = standort
@@ -502,10 +483,10 @@ def parseMetadata(
             extracted_metadata["urn"] = urn
             extracted_metadata["newspapertitel"] = issue_title
             extracted_metadata["zdbid_digital"] = zdbid_digital
-            # -----------------
             extracted_metadata["dateIssued"] = issue_json["navDate"]
             extracted_metadata["license"] = issue_json["license"][0]
             extracted_metadata["dataprovider"] = issue_json["attribution"][0]["@value"]
+            # Extract Links to images and OCR XML
             images = []
             ocr = []
             for s in issue_json["sequences"]:
@@ -521,6 +502,17 @@ def parseMetadata(
                             ocr.append(c["seeAlso"]["@id"])
             extracted_metadata["images"] = images
             extracted_metadata["ocr"] = ocr
-            # fertiges Dict an die Liste der Issues appenden
-            generateMETS(extracted_metadata, logger, metsfolder)
+            # generate METS file from extracted_metadata dict
+            """
+            Splitting this into a function that only creates the needed extracted_metadata and
+            outsourcing the XML generation and XML saving to individual functions is hard
+            because of the way we use parallel processing
+            """
+            xml_string = generate_metsmods_from_dict(
+                extracted_metadata, logger, metsfolder
+            )
+            save_xml_string_to_file(xml_string, logger, metsfolder, extracted_metadata)
+
+            # append dict of issue to list of generated issues
+            # TODO Why do we do that? Because of some async lib?
             issues.append(extracted_metadata)
