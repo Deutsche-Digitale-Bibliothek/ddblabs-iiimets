@@ -36,12 +36,18 @@ def save_xml_string_to_file(xmltemplate, logger, metsfolder, metadata):
             f.write(indentedxml)
             logger.info(f"{metadata['id']}.xml created successfully.")
         # log which IDs have already been generated as METS
+
         with open(
             Path(Path(__file__).parent.parent, "ids_of_generated_mets.txt"),
-            "a",
+            "r+",
             encoding="utf8",
         ) as f:
-            f.write(metadata["id"] + "\n")
+            # check that the current metadata["id"] is not already in the file
+            ids = f.read().splitlines()
+            if metadata["id"] in ids:
+                pass
+            else:
+                f.write(metadata["id"] + "\n")
 
 
 def generate_metsmods_from_dict(metadata, logger, metsfolder):
