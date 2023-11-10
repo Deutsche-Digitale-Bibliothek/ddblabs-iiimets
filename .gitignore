@@ -1,8 +1,11 @@
+.DS_Store
+.gitignore
 *.egg-info
 *.log
 *~
-.DS_Store
-.gitignore
+*.pkl
+*.zip
+testurls.txt
 .vscode/*
 __pycache__/*
 _METS/*
@@ -21,4 +24,4 @@ nohup.out
 src/__pycache__/
 iiimets/__pycache__/*
 iiimets/res/*.jar
-cache/*.pkl
+Pipfile.lock
