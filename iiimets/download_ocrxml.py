@@ -6,70 +6,23 @@ TODO: Konversion der hOCR Dateien in ALTO mit Saxon
 
 """
 
-import sys
-import time
+import asyncio
 import os
 import re
-from timeit import default_timer
-from pathlib import Path
-from pkg_resources import resource_filename
-from threading import Lock
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import as_completed
 import subprocess
-import asyncio
-import requests
-from requests.adapters import HTTPAdapter
-from requests_futures.sessions import FuturesSession
-from urllib3.util.retry import Retry
-from loguru import logger
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from threading import Lock
+from timeit import default_timer
+
 import lxml.etree as ET
+from loguru import logger
+from pkg_resources import resource_filename
+from requests_futures.sessions import FuturesSession
 
-HOCR2ALTO = resource_filename(__name__, "res/xslt/hOCR2ALTO.xsl")
-
-
-def runXSLonFolder(hocrfolder, altofolder, cwd, saxonpath):
-
-    subprocessargs = (
-        f"{saxonpath} -s:{hocrfolder} -o:{altofolder} -xsl:{HOCR2ALTO}".split(" ")
-    )
-    logger.info(f"Starte Saxon XSLT Processing")
-    try:
-        transformationoutput = subprocess.check_output(
-            subprocessargs, stderr=subprocess.STDOUT
-        )
-    except subprocess.CalledProcessError as e:
-        transformationoutput = str(e.output, "utf-8")
-        if len(re.findall(r"\d+\stransformations failed", transformationoutput)) == 1:
-            logger.warning(
-                re.findall(r"\d+\stransformations failed", transformationoutput)[0]
-            )
-
-
-def setup_requests() -> requests.Session:
-    """Sets up a requests session to automatically retry on errors
-
-    cf. <https://findwork.dev/blog/advanced-usage-python-requests-timeouts-retries-hooks/>
-
-    Returns
-    -------
-    http : requests.Session
-        A fully configured requests Session object
-    """
-    http = requests.Session()
-    assert_status_hook = lambda response, *args, **kwargs: response.raise_for_status()
-    http.hooks["response"] = [assert_status_hook]
-    retry_strategy = Retry(
-        total=3,
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET"],
-        backoff_factor=1,
-    )
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    http.mount("https://", adapter)
-    http.mount("http://", adapter)
-    return http
-
+from .helpers import setup_requests
 
 NAMESPACES = {
     "alto": "http://www.loc.gov/standards/alto/ns-v3#",
@@ -79,22 +32,22 @@ NAMESPACES = {
 }
 
 
-def downloadhOCR(metsfolder="_METS/2022-02-28", outfolder="_OCR/2022-02-28/hOCR"):
+def download_hocr(metsfolder, outfolder):
     start_time = default_timer()
-    files = [
+    all_mets_files = [
         os.path.join(metsfolder, x) for x in os.listdir(metsfolder) if x.endswith("xml")
     ]
 
     alto_urls = []
-    logger.info(f"Parse {len(files)} Dateien nach Volltext Links")
-    # FIXME: why only first 100 files?
-    for mets in files[:100]:
-        tree = ET.parse(bytes(mets, encoding="utf8"))
-        for alto in tree.findall(
+    logger.info(f"Parse {len(all_mets_files)} Dateien nach Volltext Links")
+
+    for mets_file in all_mets_files:
+        tree = ET.parse(bytes(mets_file, encoding="utf8"))
+        for alto_link in tree.findall(
             ".//mets:fileGrp[@USE='FULLTEXT']/mets:file[@MIMETYPE = 'text/xml']",
             NAMESPACES,
         ):
-            for flocat in alto:
+            for flocat in alto_link:
                 altourl = flocat.attrib["{%s}href" % NAMESPACES["xlink"]]
                 alto_urls.append(altourl)
 
@@ -110,7 +63,6 @@ def downloadhOCR(metsfolder="_METS/2022-02-28", outfolder="_OCR/2022-02-28/hOCR"
             response.encoding = "utf-8"
             data = response.text
             if response.status_code != 200:
-                # print(response.headers)
                 logger.critical(f"Statuscode {response.status_code} bei {url}")
             else:
                 filename = re.sub(
@@ -127,11 +79,14 @@ def downloadhOCR(metsfolder="_METS/2022-02-28", outfolder="_OCR/2022-02-28/hOCR"
         f"Vergangene Zeit für den OCR Abruf: {round((default_timer() - start_time) / 60, 2)} Minuten"
     )
 
-
-# Change Links
-# for f in files:
-#     with open(f, 'r+', encoding='utf8') as fl:
-#         cont = fl.read()
-#         cont = re.sub(r'https://api.digitale-sammlungen.de/ocr/(.+?)/(.+)"', r'\1_\2.xml"', cont)
-#         fl.write(cont)
-# logger.info(f"Anpassen der Links in der fileGroup FULLTEXT erfolgt.")
+    # Change Links
+    for f in all_mets_files:
+        with open(f, "r+", encoding="utf8") as fl:
+            cont = fl.read()
+            cont = re.sub(
+                r'https://api.digitale-sammlungen.de/ocr/(.+?)/(.+)"',
+                r'\1_\2.xml"',
+                cont,
+            )
+            fl.write(cont)
+    logger.info("Anpassen der Links in der fileGroup FULLTEXT erfolgt.")

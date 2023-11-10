@@ -4,16 +4,15 @@ Installs:
 """
 
 import codecs
-import json
-from setuptools import setup
-from setuptools import find_packages
+
+from setuptools import find_packages, setup
 
 with codecs.open("README.md", encoding="utf-8") as f:
     README = f.read()
 
 setup(
     name="iiimets",
-    version="0.1",
+    version="0.2.0",
     description="IIIF to METS/MODS conversion script",
     long_description=README,
     long_description_content_type="text/markdown",

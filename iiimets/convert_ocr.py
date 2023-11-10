@@ -1,11 +1,28 @@
-import sys
-import re
 import os
-from pkg_resources import resource_filename
-from urllib import request
+import re
+import subprocess
+
 import requests
+from pkg_resources import resource_filename
 
 HOCR2ALTO = resource_filename(__name__, "res/xslt/hOCR2ALTO.xsl")
+
+
+def run_xsl_on_folder(hocrfolder, altofolder, cwd, saxonpath, logger):
+    subprocessargs = (
+        f"{saxonpath} -s:{hocrfolder} -o:{altofolder} -xsl:{HOCR2ALTO}".split(" ")
+    )
+    logger.info("Starte Saxon XSLT Processing")
+    try:
+        transformationoutput = subprocess.check_output(
+            subprocessargs, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as e:
+        transformationoutput = str(e.output, "utf-8")
+        if len(re.findall(r"\d+\stransformations failed", transformationoutput)) == 1:
+            logger.warning(
+                re.findall(r"\d+\stransformations failed", transformationoutput)[0]
+            )
 
 
 def transformHOCR(urls, folder, logger):

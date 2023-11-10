@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+requests-futures = "*"
+loguru = "*"
+lxml = "*"
+pandas = "*"
+requests = "*"
+progress = "*"
+iiimets = {editable = true, path = "."}
+
+[dev-packages]
+pytest = "*"
+pytest-cov = "*"
+pytest-mock = "*"
+pytest-asyncio = "*"
+pytest-black = "*"
+
+[requires]
+python_version = "3.11"
