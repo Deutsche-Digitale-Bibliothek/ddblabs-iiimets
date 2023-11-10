@@ -36,10 +36,10 @@ def save_xml_string_to_file(xmltemplate, logger, metsfolder, metadata):
             f.write(indentedxml)
             logger.info(f"{metadata['id']}.xml created successfully.")
         # log which IDs have already been generated as METS
-
+        # make shure the file exists
         with open(
             Path(Path(__file__).parent.parent, "ids_of_generated_mets.txt"),
-            "r+",
+            "a+",
             encoding="utf8",
         ) as f:
             # check that the current metadata["id"] is not already in the file
@@ -55,9 +55,15 @@ def generate_metsmods_from_dict(metadata, logger, metsfolder):
     Input: Dictionary with metadata
     Output: METS XML
     """
+    return ""
 
 
 def generateMETS(metadata, logger, cwd, metsfolder):
+    """
+    Input: Dictionary with metadata
+    Output: METS XML as string
+    """
+
     def flgrp_default(images):
         n = 0
         x = ""
@@ -516,9 +522,11 @@ def iiif_to_metsmods(
             outsourcing the XML generation and XML saving to individual functions is hard
             because of the way we use parallel processing
             """
-            xml_string = generate_metsmods_from_dict(
-                extracted_metadata, logger, metsfolder
-            )
+            # TODO use generate_metsmods_from_dict
+            # xml_string = generate_metsmods_from_dict(
+            #     extracted_metadata, logger, metsfolder
+            # )
+            xml_string = generateMETS(extracted_metadata, logger, cwd, metsfolder)
             save_xml_string_to_file(xml_string, logger, metsfolder, extracted_metadata)
 
             # append dict of issue to list of generated issues
